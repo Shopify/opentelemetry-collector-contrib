@@ -137,6 +137,12 @@ func (tr *transaction) Append(ref storage.SeriesRef, ls labels.Labels, t int64, 
 }
 
 func (tr *transaction) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	//metrics, _, _, _ := tr.metricBuilder.Build()
+	//md := opencensus.OCToMetrics(tr.node, tr.resource, metrics)
+	//md.ResourceMetrics().At(0).InstrumentationLibraryMetrics().At(0).Metrics().At(0).ExponentialHistogram().DataPoints().At(0)
+	//exemplar := md.ResourceMetrics().At(0).InstrumentationLibraryMetrics().At(0).Metrics().At(0).ExponentialHistogram().DataPoints().At(0).Exemplars()
+	//compare labels
+
 	return 0, nil
 }
 

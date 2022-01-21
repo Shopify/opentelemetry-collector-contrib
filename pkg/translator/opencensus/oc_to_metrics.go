@@ -21,9 +21,9 @@ import (
 	"go.opentelemetry.io/collector/model/pdata"
 )
 
-// OCToMetrics converts OC data format to data.MetricData.
-// Deprecated: use pdata.Metrics instead. OCToMetrics may be used only by OpenCensus
-// receiver and exporter implementations.
+// OCToMetrics converts OC data format to data.MetricData.ƒ
+// Deprecated: use pdata.Metrics instead. OCToMetrics may be used only by OpenCensusÏ
+// receiver and exporter implementations.Ï
 func OCToMetrics(node *occommon.Node, resource *ocresource.Resource, metrics []*ocmetrics.Metric) pdata.Metrics {
 	dest := pdata.NewMetrics()
 	if node == nil && resource == nil && len(metrics) == 0 {
