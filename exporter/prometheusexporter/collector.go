@@ -18,7 +18,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/golang/protobuf/ptypes/timestamp"
+
+	"github.com/Shopify/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"go.opentelemetry.io/collector/model/pdata"
 	"go.uber.org/zap"
 )
@@ -38,7 +41,7 @@ func newCollector(config *Config, logger *zap.Logger) *collector {
 		logger:         logger,
 		namespace:      sanitize(config.Namespace),
 		sendTimestamps: config.SendTimestamps,
-		constLabels:    config.ConstLabels,
+		constLabels:    prometheus.Labels(config.ConstLabels),
 	}
 }
 
@@ -195,7 +198,24 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		points[bucket] = cumCount
 	}
 
-	m, err := prometheus.NewConstHistogram(desc, ip.Count(), ip.Sum(), points, attributes...)
+	arrLen := ip.Exemplars().Len()
+	var exemplarArr []*dto.Exemplar = make([]*dto.Exemplar, arrLen)
+	for i := 0; i < arrLen; i++ {
+		e := ip.Exemplars().At(i)
+		value := e.DoubleVal()
+		var labelPairs []*dto.LabelPair = make([]*dto.LabelPair, e.FilteredAttributes().Len())
+		for k, _ := range e.FilteredAttributes().AsRaw() {
+			attrValue, _ := e.FilteredAttributes().Get(k)
+			value := attrValue.StringVal()
+			labelPair := dto.LabelPair{Name: &k, Value: &value}
+			labelPairs = append(labelPairs, &labelPair)
+		}
+		//t := ip.Exemplars().At(i).Timestamp().AsTime()
+		badTs := timestamp.Timestamp{}
+		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: &badTs}
+	}
+
+	m, err := prometheus.NewConstHistogram(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)
 	if err != nil {
 		return nil, err
 	}
