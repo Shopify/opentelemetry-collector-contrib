@@ -148,8 +148,8 @@ github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/SAP/go-hdb v0.14.1/go.mod h1:7fdQLVC2lER3urZLjZCm0AuMQfApof92n3aylBPEkMo=
-github.com/Shopify/client_golang v1.12.1-0.20220124214650-347d08ac72cd h1:uFR9Re5+WeoxZdBrIz15kDxhL8JYHoX506V8GndKPgc=
-github.com/Shopify/client_golang v1.12.1-0.20220124214650-347d08ac72cd/go.mod h1:BRN9qSICqlpxXwtrYeF90lRHyZ8N13rUCcAVLGN6R2I=
+github.com/Shopify/client_golang v1.12.1-0.20220126170015-5aaefec1fb2c h1:pYISqFCnSPb/D4cYxuEddm32m/YO7feZ+icDx1y9rV8=
+github.com/Shopify/client_golang v1.12.1-0.20220126170015-5aaefec1fb2c/go.mod h1:BRN9qSICqlpxXwtrYeF90lRHyZ8N13rUCcAVLGN6R2I=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d/go.mod h1:HI8ITrYtUY+O+ZhtlqUnD8+KwNPOyugEhfP9fdUIaEQ=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=

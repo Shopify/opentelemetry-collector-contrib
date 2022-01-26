@@ -151,7 +151,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/ReneKroon/ttlcache/v2 v2.11.0 // indirect
 	github.com/SermoDigital/jose v0.9.2-0.20161205224733-f6df55f235c2 // indirect
-	github.com/Shopify/client_golang v1.12.1-0.20220124214650-347d08ac72cd // indirect
+	github.com/Shopify/client_golang v1.12.1-0.20220126170015-5aaefec1fb2c // indirect
 	github.com/Shopify/sarama v1.31.0 // indirect
 	github.com/Showmax/go-fqdn v1.0.0 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
@@ -751,7 +751,7 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipki
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zookeeperreceiver => ./receiver/zookeeperreceiver
 
-//replace github.com/prometheus/client_golang =>  github.com/Shopify/client_golang v1.12.1-0.20220124214650-347d08ac72cd
+//replace github.com/prometheus/client_golang => github.com/Shopify/client_golang
 
 // see https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/4433
 exclude github.com/StackExchange/wmi v1.2.0

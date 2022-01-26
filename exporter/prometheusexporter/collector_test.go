@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/Shopify/client_golang/prometheus"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/model/pdata"
@@ -85,6 +85,30 @@ func TestConvertInvalidMetric(t *testing.T) {
 		_, err := c.convertMetric(metric)
 		require.Error(t, err)
 	}
+}
+
+func TestConvertDoubleHistogramExemplar(t *testing.T) {
+	metric := pdata.NewMetric()
+	//initialize empty histogram
+	metric.SetDataType(pdata.MetricDataTypeHistogram)
+	//initialize empty datapoint
+	metric.Histogram().DataPoints().AppendEmpty()
+	//initialize empty Exemplar on datapoint 0
+	metric.Histogram().DataPoints().At(0).Exemplars().AppendEmpty()
+	//fmt.Println(">>>", metric.Histogram().DataPoints().At(0))
+
+	//e := metric.Histogram().DataPoints().AppendEmpty().Exemplars()
+	//exemplar  := v1.Exemplar{}
+
+	c := collector{
+		accumulator: &mockAccumulator{
+			[]pdata.Metric{metric},
+		},
+		logger: zap.NewNop(),
+	}
+
+	c.convertDoubleHistogram(metric)
+	//fmt.Println(pMetric.Desc())
 }
 
 // errorCheckCore keeps track of logged errors
