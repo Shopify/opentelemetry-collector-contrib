@@ -29,6 +29,8 @@ import (
 	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/idutils"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterconfig"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterset"
 )
 
 func TestNewTracesProcessor(t *testing.T) {
@@ -444,6 +446,78 @@ func Test_hash(t *testing.T) {
 		hash := hash(key, 1)
 		require.False(t, seen[hash], "Unexpected duplicated hash")
 		seen[hash] = true
+	}
+}
+
+func createConfig(serviceNames []string, matchType filterset.MatchType) *Config {
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig()
+	oCfg := cfg.(*Config)
+	oCfg.Include = &filterconfig.MatchProperties{
+		Services: serviceNames,
+		Config: filterset.Config{
+			MatchType: matchType,
+		},
+	}
+	oCfg.ProcessorSettings = config.NewProcessorSettings(config.NewComponentID(typeStr))
+	oCfg.SamplingPercentage = 0.03
+	return oCfg
+}
+
+func Test_tracesamplerprocessor_include(t *testing.T) {
+	tests := []struct {
+		name              string
+		cfg               *Config
+		numBatches        int
+		numTracesPerBatch int
+		acceptableDelta   float64
+		svcName           string
+		expectedSampling  float32
+	}{
+		{
+			name:              "samples_include_matched_service",
+			cfg:               createConfig([]string{"svcA"}, filterset.Regexp),
+			numBatches:        1e5,
+			numTracesPerBatch: 2,
+			acceptableDelta:   0.01,
+			svcName:           "svcA",
+			expectedSampling:  0.03,
+		},
+		{
+			name:              "does_not_sample_include_matched_service",
+			cfg:               createConfig([]string{"svcA"}, filterset.Regexp),
+			numBatches:        1e5,
+			numTracesPerBatch: 2,
+			acceptableDelta:   0.01,
+			svcName:           "svcB",
+			expectedSampling:  100,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sink := new(consumertest.TracesSink)
+			tsp, err := newTracesProcessor(sink, tt.cfg)
+			if err != nil {
+				t.Errorf("error when creating tracesamplerprocessor: %v", err)
+				return
+			}
+			for _, td := range genRandomTestData(tt.numBatches, tt.numTracesPerBatch, tt.svcName, 1) {
+				assert.NoError(t, tsp.ConsumeTraces(context.Background(), td))
+			}
+			_, sampled := assertSampledData(t, sink.AllTraces(), tt.svcName)
+			actualPercentageSamplingPercentage := float32(sampled) / float32(tt.numBatches*tt.numTracesPerBatch) * 100.0
+
+			delta := math.Abs(float64(actualPercentageSamplingPercentage - tt.expectedSampling))
+			if delta > tt.acceptableDelta {
+				t.Errorf(
+					"got %f percentage sampling rate, want %f (allowed delta is %f but got %f)",
+					actualPercentageSamplingPercentage,
+					tt.expectedSampling,
+					tt.acceptableDelta,
+					delta,
+				)
+			}
+		})
 	}
 }
 
