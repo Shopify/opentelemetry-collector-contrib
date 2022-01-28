@@ -16,9 +16,8 @@ package prometheusexporter // import "github.com/open-telemetry/opentelemetry-co
 
 import (
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"sort"
-
-	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/Shopify/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -177,6 +176,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 
 	indicesMap := make(map[float64]int)
 	buckets := make([]float64, 0, len(ip.BucketCounts()))
+
 	for index, bucket := range ip.ExplicitBounds() {
 		if _, added := indicesMap[bucket]; !added {
 			indicesMap[bucket] = index
@@ -199,20 +199,19 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 	}
 
 	arrLen := ip.Exemplars().Len()
-	var exemplarArr []*dto.Exemplar = make([]*dto.Exemplar, arrLen)
+	var exemplarArr = make([]*dto.Exemplar, arrLen)
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
 		value := e.DoubleVal()
-		var labelPairs []*dto.LabelPair = make([]*dto.LabelPair, e.FilteredAttributes().Len())
+		var labelPairs []*dto.LabelPair
 		for k, _ := range e.FilteredAttributes().AsRaw() {
 			attrValue, _ := e.FilteredAttributes().Get(k)
 			value := attrValue.StringVal()
 			labelPair := dto.LabelPair{Name: &k, Value: &value}
 			labelPairs = append(labelPairs, &labelPair)
 		}
-		//t := ip.Exemplars().At(i).Timestamp().AsTime()
-		badTs := timestamp.Timestamp{}
-		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: &badTs}
+		ts := timestamppb.New(e.Timestamp().AsTime())
+		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: ts}
 	}
 
 	m, err := prometheus.NewConstHistogram(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)

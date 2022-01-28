@@ -92,13 +92,28 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	//initialize empty histogram
 	metric.SetDataType(pdata.MetricDataTypeHistogram)
 	//initialize empty datapoint
-	metric.Histogram().DataPoints().AppendEmpty()
-	//initialize empty Exemplar on datapoint 0
-	metric.Histogram().DataPoints().At(0).Exemplars().AppendEmpty()
-	//fmt.Println(">>>", metric.Histogram().DataPoints().At(0))
+	hd := metric.Histogram().DataPoints().AppendEmpty()
 
-	//e := metric.Histogram().DataPoints().AppendEmpty().Exemplars()
-	//exemplar  := v1.Exemplar{}
+	bc := []uint64{2, 3, 5}
+	hd.SetBucketCounts(bc)
+	bounds := []float64{5, 6, 7}
+	hd.SetExplicitBounds(bounds)
+
+	//add test exemplars, requires at least 3
+	e1 := hd.Exemplars().AppendEmpty()
+	e1.SetDoubleVal(5)
+	testLabelKey := "test-label"
+	testLabelVal := "label-value"
+	e1.FilteredAttributes().InsertString(testLabelKey, testLabelVal)
+	testTime, _ := time.Parse("unix", "Mon Jan _2 15:04:05 MST 2006")
+	e1.SetTimestamp(pdata.NewTimestampFromTime(testTime))
+
+	hd.Exemplars().AppendEmpty().SetDoubleVal(3)
+	hd.Exemplars().AppendEmpty().SetDoubleVal(9)
+
+	metric.SetName("test-metric")
+	metric.SetDescription("this is test metric")
+	metric.SetUnit("T")
 
 	c := collector{
 		accumulator: &mockAccumulator{
@@ -107,8 +122,21 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 		logger: zap.NewNop(),
 	}
 
-	c.convertDoubleHistogram(metric)
-	//fmt.Println(pMetric.Desc())
+	pbMetric, _ := c.convertDoubleHistogram(metric)
+	m := io_prometheus_client.Metric{}
+	pbMetric.Write(&m)
+
+	buckets := m.GetHistogram().GetBucket()
+
+	require.Equal(t, 3, len(buckets))
+
+	require.Equal(t, float64(5), buckets[0].GetExemplar().GetValue())
+	require.Equal(t, int32(128654848), buckets[0].GetExemplar().GetTimestamp().GetNanos())
+
+	require.Equal(t, 1, len(buckets[0].GetExemplar().GetLabel()))
+	require.Equal(t, "test-label", buckets[0].GetExemplar().GetLabel()[0].GetName())
+	require.Equal(t, "label-value", buckets[0].GetExemplar().GetLabel()[0].GetValue())
+
 }
 
 // errorCheckCore keeps track of logged errors
