@@ -231,8 +231,6 @@ github.com/Shopify/client_golang v1.12.1-0.20220126170015-5aaefec1fb2c h1:pYISqF
 github.com/Shopify/client_golang v1.12.1-0.20220126170015-5aaefec1fb2c/go.mod h1:BRN9qSICqlpxXwtrYeF90lRHyZ8N13rUCcAVLGN6R2I=
 github.com/Shopify/goreferrer v0.0.0-20181106222321-ec9c9a553398/go.mod h1:a1uqRtAwp2Xwc6WNPJEufxJ7fx3npB4UV/JOLmbu5I0=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d/go.mod h1:HI8ITrYtUY+O+ZhtlqUnD8+KwNPOyugEhfP9fdUIaEQ=
-github.com/Shopify/opentelemetry-collector-contrib v0.42.1-0.20220128170523-5f3bf9e0c1d2 h1:QIptIocqsFJSLkMdcpLlpRd6cZ3ak8HYyDT+5fP7T8I=
-github.com/Shopify/opentelemetry-collector-contrib v0.42.1-0.20220128170523-5f3bf9e0c1d2/go.mod h1:+aSbPZeYGn4rYaWLh2a2jyZcOSpTzYoz0aHEs4dtfks=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/sarama v1.22.2-0.20190604114437-cd910a683f9f/go.mod h1:XLH1GYJnLVE0XCr6KdJGVJRTwY30moWNJ4sERjXX6fs=
 github.com/Shopify/sarama v1.29.1/go.mod h1:mdtqvCSg8JOxk8PmpTNGyo6wzd4BMm4QXSfDnTXmgkE=
