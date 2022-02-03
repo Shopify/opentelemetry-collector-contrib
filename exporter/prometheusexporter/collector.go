@@ -16,10 +16,11 @@ package prometheusexporter // import "github.com/open-telemetry/opentelemetry-co
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"sort"
 
-	"github.com/Shopify/client_golang/prometheus"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"go.opentelemetry.io/collector/model/pdata"
 	"go.uber.org/zap"

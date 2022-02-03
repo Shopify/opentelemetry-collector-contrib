@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Shopify/client_golang/prometheus"
-	"github.com/Shopify/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/model/pdata"
 )

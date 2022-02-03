@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Shopify/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/model/pdata"
