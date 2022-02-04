@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package prometheusexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
+package prometheusexporter
 
 import (
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"sort"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"go.opentelemetry.io/collector/model/pdata"
 	"go.uber.org/zap"
