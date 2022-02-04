@@ -215,7 +215,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: ts}
 	}
 
-	m, err := prometheus.NewConstHistogram(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)
+	m, err := prometheus.NewConstHistogramWithExemplar(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)
 	if err != nil {
 		return nil, err
 	}

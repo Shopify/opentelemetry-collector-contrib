@@ -276,4 +276,4 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/internal/corei
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry => ../pkg/resourcetotelemetry
 
-replace github.com/prometheus/client_golang => github.com/Shopify/client_golang v1.12.1-0.20220203181840-55a028ed0957
+//replace github.com/prometheus/client_golang => github.com/Shopify/client_golang v1.12.1-0.20220204212930-202eca87b944
