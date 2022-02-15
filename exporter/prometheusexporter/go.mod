@@ -149,4 +149,4 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourceto
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => ../../receiver/prometheusreceiver
 
-replace github.com/prometheus/client_golang => github.com/Shopify/client_golang v1.12.1-0.20220204212930-202eca87b944
+replace github.com/prometheus/client_golang => github.com/Shopify/client_golang v1.12.1-0.20220215212102-2278657d4223
