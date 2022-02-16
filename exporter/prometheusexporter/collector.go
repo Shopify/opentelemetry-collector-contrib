@@ -208,11 +208,13 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
 		value := e.DoubleVal()
+		fmt.Println("exemplar at ", i, " value", value)
 		var labelPairs []*dto.LabelPair
 		for k, _ := range e.FilteredAttributes().AsRaw() {
 			attrValue, _ := e.FilteredAttributes().Get(k)
 			value := attrValue.StringVal()
 			labelPair := dto.LabelPair{Name: &k, Value: &value}
+			fmt.Println("exemplar at ", i, " label name", &k, " label value", &value)
 			labelPairs = append(labelPairs, &labelPair)
 		}
 		ts := timestamppb.New(e.Timestamp().AsTime())
