@@ -759,7 +759,7 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipki
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zookeeperreceiver => ./receiver/zookeeperreceiver
 
-replace github.com/prometheus/client_golang => github.com/Shopify/client_golang v1.12.1-0.20220215212102-2278657d4223
+replace github.com/prometheus/client_golang => github.com/Shopify/client_golang v1.12.1-0.20220215215928-69345d3eef51
 
 // see https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/4433
 exclude github.com/StackExchange/wmi v1.2.0
