@@ -192,7 +192,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 	points := make(map[float64]uint64)
 	for _, bucket := range buckets {
 		index := indicesMap[bucket]
-		c.logger.Debug("pdata bucket bucket->index:" + strconv.Itoa(indicesMap[bucket]) + " -> " + strconv.Itoa(index))
+		fmt.Println("pdata bucket bucket->index:" + strconv.Itoa(indicesMap[bucket]) + " -> " + strconv.Itoa(index))
 		var countPerBucket uint64
 		if len(ip.ExplicitBounds()) > 0 && index < len(ip.ExplicitBounds()) {
 			countPerBucket = ip.BucketCounts()[index]
@@ -200,10 +200,10 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		cumCount += countPerBucket
 		points[bucket] = cumCount
 	}
-	c.logger.Debug("pdata buckets:" + strconv.Itoa(len(points)))
+	fmt.Println("pdata buckets:" + strconv.Itoa(len(points)))
 
 	arrLen := ip.Exemplars().Len()
-	c.logger.Debug("pdata metric exemplars:" + strconv.Itoa(ip.Exemplars().Len()))
+	fmt.Println("pdata metric exemplars:" + strconv.Itoa(ip.Exemplars().Len()))
 	var exemplarArr = make([]*dto.Exemplar, arrLen)
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
@@ -216,7 +216,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 			labelPairs = append(labelPairs, &labelPair)
 		}
 		ts := timestamppb.New(e.Timestamp().AsTime())
-		c.logger.Debug("pdata exemplars at:" + strconv.Itoa(i) + " ts: " + ts.String())
+		fmt.Println("pdata exemplars at:" + strconv.Itoa(i) + " ts: " + ts.String())
 		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: ts}
 	}
 
