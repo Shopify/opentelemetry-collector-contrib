@@ -210,10 +210,12 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		value := e.DoubleVal()
 		fmt.Println("exemplar at ", i, " value", value)
 		var labelPairs []*dto.LabelPair
+		key := "trace_id"
+		test_val := "test-traceid"
 		for k, _ := range e.FilteredAttributes().AsRaw() {
 			attrValue, _ := e.FilteredAttributes().Get(k)
 			value := attrValue.StringVal()
-			labelPair := dto.LabelPair{Name: &k, Value: &value}
+			labelPair := dto.LabelPair{Name: &key, Value: &test_val}
 			fmt.Println("exemplar at ", i, " label name", &k, " label value", &value)
 			labelPairs = append(labelPairs, &labelPair)
 		}

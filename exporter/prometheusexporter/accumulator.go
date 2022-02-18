@@ -242,7 +242,6 @@ func (a *lastValueAccumulator) accumulateDoubleHistogram(metric pdata.Metric, il
 
 		m := createMetric(metric)
 		ip.CopyTo(m.Histogram().DataPoints().AppendEmpty())
-		ip.Exemplars().CopyTo(m.Histogram().DataPoints().At(0).Exemplars())
 		m.Histogram().SetAggregationTemporality(pdata.MetricAggregationTemporalityCumulative)
 		a.registeredMetrics.Store(signature, &accumulatedValue{value: m, instrumentationLibrary: il, updated: now})
 		n++
