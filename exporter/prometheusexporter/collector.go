@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	dto "github.com/prometheus/client_model/go"
@@ -204,24 +205,22 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 
 	arrLen := ip.Exemplars().Len()
 	fmt.Println("pdata metric exemplars:" + strconv.Itoa(ip.Exemplars().Len()))
-	var exemplarArr = make([]*dto.Exemplar, arrLen)
+	var exemplarArr = make([]*dto.Exemplar, 0, arrLen)
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
-		value := e.DoubleVal()
-		fmt.Println("exemplar at ", i, " value", value)
+		eValue := proto.Float64(e.DoubleVal())
+		fmt.Println("exemplar at ", i, " value", eValue)
 		var labelPairs []*dto.LabelPair
-		key := "trace_id"
-		test_val := "test-traceid"
 		for k, _ := range e.FilteredAttributes().AsRaw() {
 			attrValue, _ := e.FilteredAttributes().Get(k)
 			value := attrValue.StringVal()
-			labelPair := dto.LabelPair{Name: &key, Value: &test_val}
-			fmt.Println("exemplar at ", i, " label name", &k, " label value", &value)
+			labelPair := dto.LabelPair{Name: proto.String(k), Value: proto.String(value)}
+			fmt.Println("exemplar at ", i, " label name", k, " label value", value)
 			labelPairs = append(labelPairs, &labelPair)
 		}
 		ts := timestamppb.New(e.Timestamp().AsTime())
 		fmt.Println("pdata exemplars at:" + strconv.Itoa(i) + " ts: " + ts.String())
-		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: ts}
+		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: eValue, Timestamp: ts}
 	}
 
 	m, err := prometheus.NewConstHistogramWithExemplar(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)
