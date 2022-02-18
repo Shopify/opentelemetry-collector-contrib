@@ -205,7 +205,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 
 	arrLen := ip.Exemplars().Len()
 	fmt.Println("pdata metric exemplars:" + strconv.Itoa(ip.Exemplars().Len()))
-	var exemplarArr = make([]*dto.Exemplar, 0, arrLen)
+	var exemplarArr = make([]*dto.Exemplar, arrLen)
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
 		eValue := proto.Float64(e.DoubleVal())
