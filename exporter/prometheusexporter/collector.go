@@ -210,12 +210,11 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		value := e.DoubleVal()
 		fmt.Println("exemplar at ", i, " value", value)
 		var labelPairs []*dto.LabelPair
-		key := "trace_id"
 		for k, _ := range e.FilteredAttributes().AsRaw() {
 			attrValue, _ := e.FilteredAttributes().Get(k)
 			value := attrValue.StringVal()
-			labelPair := dto.LabelPair{Name: &key, Value: &value}
-			fmt.Println("exemplar at ", i, " label name", k, " label value", value)
+			labelPair := dto.LabelPair{Name: &k, Value: &value}
+			fmt.Println("exemplar at ", i, " label name", &k, " label value", &value)
 			labelPairs = append(labelPairs, &labelPair)
 		}
 		ts := timestamppb.New(e.Timestamp().AsTime())
@@ -223,7 +222,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: &value, Timestamp: ts}
 	}
 
-	m, err := prometheus.NewConstHistogramWithExemplar(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)
+	m, err := prometheus.NewConstHistogramWithExemplar(desc, 0, 0, points, exemplarArr, attributes...)
 	if err != nil {
 		return nil, err
 	}
