@@ -58,7 +58,7 @@ func newPrometheusExporter(config *Config, set component.ExporterCreateSettings)
 			registry,
 			promhttp.HandlerOpts{
 				ErrorHandling:     promhttp.ContinueOnError,
-				EnableOpenMetrics: true,
+				EnableOpenMetrics: config.EnableOpenMetrics,
 			},
 		),
 	}, nil
