@@ -16,12 +16,10 @@ package prometheusexporter
 
 import (
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"sort"
-	"strconv"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"sort"
 
 	dto "github.com/prometheus/client_model/go"
 	"go.opentelemetry.io/collector/model/pdata"
@@ -193,7 +191,6 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 	points := make(map[float64]uint64)
 	for _, bucket := range buckets {
 		index := indicesMap[bucket]
-		fmt.Println("pdata bucket bucket->index:" + strconv.Itoa(indicesMap[bucket]) + " -> " + strconv.Itoa(index))
 		var countPerBucket uint64
 		if len(ip.ExplicitBounds()) > 0 && index < len(ip.ExplicitBounds()) {
 			countPerBucket = ip.BucketCounts()[index]
@@ -201,25 +198,20 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		cumCount += countPerBucket
 		points[bucket] = cumCount
 	}
-	fmt.Println("pdata buckets:" + strconv.Itoa(len(points)))
 
 	arrLen := ip.Exemplars().Len()
-	fmt.Println("pdata metric exemplars:" + strconv.Itoa(ip.Exemplars().Len()))
 	var exemplarArr = make([]*dto.Exemplar, arrLen)
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
 		eValue := proto.Float64(e.DoubleVal())
-		fmt.Println("exemplar at ", i, " value", eValue)
 		var labelPairs []*dto.LabelPair
 		for k, _ := range e.FilteredAttributes().AsRaw() {
 			attrValue, _ := e.FilteredAttributes().Get(k)
 			value := attrValue.StringVal()
 			labelPair := dto.LabelPair{Name: proto.String(k), Value: proto.String(value)}
-			fmt.Println("exemplar at ", i, " label name", k, " label value", value)
 			labelPairs = append(labelPairs, &labelPair)
 		}
 		ts := timestamppb.New(e.Timestamp().AsTime())
-		fmt.Println("pdata exemplars at:" + strconv.Itoa(i) + " ts: " + ts.String())
 		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: eValue, Timestamp: ts}
 	}
 
