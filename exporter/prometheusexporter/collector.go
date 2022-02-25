@@ -41,7 +41,7 @@ func newCollector(config *Config, logger *zap.Logger) *collector {
 		logger:         logger,
 		namespace:      sanitize(config.Namespace),
 		sendTimestamps: config.SendTimestamps,
-		constLabels:    prometheus.Labels(config.ConstLabels),
+		constLabels:    config.ConstLabels,
 	}
 }
 
