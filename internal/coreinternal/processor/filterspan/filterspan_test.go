@@ -42,14 +42,14 @@ func TestSpan_validateMatchesConfiguration_InvalidConfig(t *testing.T) {
 		{
 			name:        "empty_property",
 			property:    filterconfig.MatchProperties{},
-			errorString: "at least one of \"services\", \"span_names\", \"attributes\", \"libraries\" or \"resources\" field must be specified",
+			errorString: filterconfig.ErrMissingRequiredField.Error(),
 		},
 		{
 			name: "empty_service_span_names_and_attributes",
 			property: filterconfig.MatchProperties{
 				Services: []string{},
 			},
-			errorString: "at least one of \"services\", \"span_names\", \"attributes\", \"libraries\" or \"resources\" field must be specified",
+			errorString: filterconfig.ErrMissingRequiredField.Error(),
 		},
 		{
 			name: "log_properties",
@@ -112,7 +112,6 @@ func TestSpan_Matching_False(t *testing.T) {
 				Attributes: []filterconfig.Attribute{},
 			},
 		},
-
 		{
 			name: "service_name_doesnt_match_strict",
 			properties: &filterconfig.MatchProperties{
@@ -141,6 +140,23 @@ func TestSpan_Matching_False(t *testing.T) {
 					"regular string",
 				},
 				Attributes: []filterconfig.Attribute{},
+			},
+		},
+
+		{
+			name: "span_kind_doesnt_match_regexp",
+			properties: &filterconfig.MatchProperties{
+				Config:     *createConfig(filterset.Regexp),
+				Attributes: []filterconfig.Attribute{},
+				SpanKinds:  []string{pdata.SpanKindProducer.String()},
+			},
+		},
+		{
+			name: "span_kind_doesnt_match_strict",
+			properties: &filterconfig.MatchProperties{
+				Config:     *createConfig(filterset.Strict),
+				Attributes: []filterconfig.Attribute{},
+				SpanKinds:  []string{pdata.SpanKindProducer.String()},
 			},
 		},
 	}
@@ -217,6 +233,26 @@ func TestSpan_Matching_True(t *testing.T) {
 				Attributes: []filterconfig.Attribute{},
 			},
 		},
+		{
+			name: "span_kind_match_strict",
+			properties: &filterconfig.MatchProperties{
+				Config: *createConfig(filterset.Strict),
+				SpanKinds: []string{
+					pdata.SpanKindClient.String(),
+				},
+				Attributes: []filterconfig.Attribute{},
+			},
+		},
+		{
+			name: "span_kind_match_regexp",
+			properties: &filterconfig.MatchProperties{
+				Config: *createConfig(filterset.Regexp),
+				SpanKinds: []string{
+					"CLIENT",
+				},
+				Attributes: []filterconfig.Attribute{},
+			},
+		},
 	}
 
 	span := pdata.NewSpan()
@@ -226,6 +262,7 @@ func TestSpan_Matching_True(t *testing.T) {
 	span.Attributes().InsertDouble("keyDouble", 3245.6)
 	span.Attributes().InsertBool("keyBool", true)
 	span.Attributes().InsertString("keyExists", "present")
+	span.SetKind(pdata.SpanKindClient)
 	assert.NotNil(t, span)
 
 	resource := pdata.NewResource()
