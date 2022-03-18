@@ -16,12 +16,11 @@ package prometheusexporter
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"sort"
 
-	dto "github.com/prometheus/client_model/go"
+	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"go.opentelemetry.io/collector/model/pdata"
 	"go.uber.org/zap"
 )
@@ -200,23 +199,30 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 	}
 
 	arrLen := ip.Exemplars().Len()
-	var exemplarArr = make([]*dto.Exemplar, arrLen)
+	exemplars := make([]prometheus.Exemplar, arrLen)
 	for i := 0; i < arrLen; i++ {
 		e := ip.Exemplars().At(i)
-		eValue := proto.Float64(e.DoubleVal())
-		var labelPairs []*dto.LabelPair
+
+		labels := prometheus.Labels{}
 		e.FilteredAttributes().Range(func(k string, v pdata.AttributeValue) bool {
-			labelPair := dto.LabelPair{Name: proto.String(k), Value: proto.String(v.StringVal())}
-			labelPairs = append(labelPairs, &labelPair)
+			labels[k] = v.AsString()
 			return true
 		})
-		ts := timestamppb.New(e.Timestamp().AsTime())
-		exemplarArr[i] = &dto.Exemplar{Label: labelPairs, Value: eValue, Timestamp: ts}
+
+		exemplars[i] = prometheus.Exemplar{
+			Value:     *proto.Float64(e.DoubleVal()),
+			Labels:    labels,
+			Timestamp: e.Timestamp().AsTime(),
+		}
 	}
 
-	m, err := prometheus.NewConstHistogramWithExemplar(desc, ip.Count(), ip.Sum(), points, exemplarArr, attributes...)
+	m, err := prometheus.NewConstHistogram(desc, ip.Count(), ip.Sum(), points, attributes...)
 	if err != nil {
 		return nil, err
+	}
+
+	if arrLen > 0 {
+		m = prometheus.MustNewMetricWithExemplars(m, exemplars...)
 	}
 
 	if c.sendTimestamps {
