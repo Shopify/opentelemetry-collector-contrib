@@ -42,6 +42,9 @@ type propertiesMatcher struct {
 
 	// Span names to compare to.
 	nameFilters filterset.FilterSet
+
+	// Span kinds to compare to
+	kindFilters filterset.FilterSet
 }
 
 // NewMatcher creates a span Matcher that matches based on the given MatchProperties.
@@ -75,10 +78,19 @@ func NewMatcher(mp *filterconfig.MatchProperties) (Matcher, error) {
 		}
 	}
 
+	var kindFS filterset.FilterSet
+	if len(mp.SpanKinds) > 0 {
+		kindFS, err = filterset.CreateFilterSet(mp.SpanKinds, &mp.Config)
+		if err != nil {
+			return nil, fmt.Errorf("error creating span kind filters: %v", err)
+		}
+	}
+
 	return &propertiesMatcher{
 		PropertiesMatcher: rm,
 		serviceFilters:    serviceFS,
 		nameFilters:       nameFS,
+		kindFilters:       kindFS,
 	}, nil
 }
 
@@ -118,6 +130,10 @@ func (mp *propertiesMatcher) MatchSpan(span pdata.Span, resource pdata.Resource,
 	}
 
 	if mp.nameFilters != nil && !mp.nameFilters.Matches(span.Name()) {
+		return false
+	}
+
+	if mp.kindFilters != nil && !mp.kindFilters.Matches(span.Kind().String()) {
 		return false
 	}
 
