@@ -88,32 +88,50 @@ func TestConvertInvalidMetric(t *testing.T) {
 }
 
 func TestConvertDoubleHistogramExemplar(t *testing.T) {
+	// initialize empty histogram
 	metric := pdata.NewMetric()
-	//initialize empty histogram
 	metric.SetDataType(pdata.MetricDataTypeHistogram)
-	//initialize empty datapoint
-	hd := metric.Histogram().DataPoints().AppendEmpty()
-
-	bc := []uint64{2, 3, 5}
-	hd.SetBucketCounts(bc)
-	bounds := []float64{5, 6, 7}
-	hd.SetExplicitBounds(bounds)
-
-	//add test exemplars, requires at least 3
-	e1 := hd.Exemplars().AppendEmpty()
-	e1.SetDoubleVal(5)
-	testLabelKey := "test-label"
-	testLabelVal := "label-value"
-	e1.FilteredAttributes().InsertString(testLabelKey, testLabelVal)
-	testTime, _ := time.Parse("unix", "Mon Jan _2 15:04:05 MST 2006")
-	e1.SetTimestamp(pdata.NewTimestampFromTime(testTime))
-
-	hd.Exemplars().AppendEmpty().SetDoubleVal(3)
-	hd.Exemplars().AppendEmpty().SetDoubleVal(9)
-
-	metric.SetName("test-metric")
+	metric.SetName("test_metric")
 	metric.SetDescription("this is test metric")
 	metric.SetUnit("T")
+
+	// initialize empty datapoint
+	hd := metric.Histogram().DataPoints().AppendEmpty()
+
+	bounds := []float64{5, 25, 100}
+	hd.SetExplicitBounds(bounds)
+	bc := []uint64{15, 1700, 89}
+	hd.SetBucketCounts(bc)
+
+	exemplarTs, _ := time.Parse("unix", "Mon Jan _2 15:04:05 MST 2006")
+	exemplarLabels := prometheus.Labels{"test_label": "label_value"}
+	exemplars := []prometheus.Exemplar{
+		{
+			Timestamp: exemplarTs,
+			Value:     3,
+			Labels:    exemplarLabels,
+		},
+		{
+			Timestamp: exemplarTs,
+			Value:     44,
+			Labels:    exemplarLabels,
+		},
+		{
+			Timestamp: exemplarTs,
+			Value:     78,
+			Labels:    exemplarLabels,
+		},
+	}
+
+	// add each exemplar value to the metric
+	for _, e := range exemplars {
+		pde := hd.Exemplars().AppendEmpty()
+		pde.SetDoubleVal(e.Value)
+		for k, v := range e.Labels {
+			pde.FilteredAttributes().InsertString(k, v)
+		}
+		pde.SetTimestamp(pdata.NewTimestampFromTime(e.Timestamp))
+	}
 
 	c := collector{
 		accumulator: &mockAccumulator{
@@ -130,13 +148,12 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 
 	require.Equal(t, 3, len(buckets))
 
-	require.Equal(t, float64(5), buckets[0].GetExemplar().GetValue())
+	require.Equal(t, 3.0, buckets[0].GetExemplar().GetValue())
 	require.Equal(t, int32(128654848), buckets[0].GetExemplar().GetTimestamp().GetNanos())
 
 	require.Equal(t, 1, len(buckets[0].GetExemplar().GetLabel()))
-	require.Equal(t, "test-label", buckets[0].GetExemplar().GetLabel()[0].GetName())
-	require.Equal(t, "label-value", buckets[0].GetExemplar().GetLabel()[0].GetValue())
-
+	require.Equal(t, "test_label", buckets[0].GetExemplar().GetLabel()[0].GetName())
+	require.Equal(t, "label_value", buckets[0].GetExemplar().GetLabel()[0].GetValue())
 }
 
 // errorCheckCore keeps track of logged errors
