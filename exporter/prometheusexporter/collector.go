@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
-
 	"go.opentelemetry.io/collector/model/pdata"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
 type collector struct {
