@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/model/pdata"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/idutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/testdata"
@@ -44,32 +44,32 @@ var (
 func TestCodeFromAttr(t *testing.T) {
 	tests := []struct {
 		name string
-		attr pdata.AttributeValue
+		attr pdata.Value
 		code int64
 		err  error
 	}{
 		{
 			name: "ok-string",
-			attr: pdata.NewAttributeValueString("0"),
+			attr: pdata.NewValueString("0"),
 			code: 0,
 		},
 
 		{
 			name: "ok-int",
-			attr: pdata.NewAttributeValueInt(1),
+			attr: pdata.NewValueInt(1),
 			code: 1,
 		},
 
 		{
 			name: "wrong-type",
-			attr: pdata.NewAttributeValueBool(true),
+			attr: pdata.NewValueBool(true),
 			code: 0,
 			err:  errType,
 		},
 
 		{
 			name: "invalid-string",
-			attr: pdata.NewAttributeValueString("inf"),
+			attr: pdata.NewValueString("inf"),
 			code: 0,
 			err:  strconv.ErrSyntax,
 		},
@@ -91,35 +91,35 @@ func TestCodeFromAttr(t *testing.T) {
 func TestGetStatusCodeFromHTTPStatusAttr(t *testing.T) {
 	tests := []struct {
 		name string
-		attr pdata.AttributeValue
+		attr pdata.Value
 		code pdata.StatusCode
 	}{
 		{
 			name: "string-unknown",
-			attr: pdata.NewAttributeValueString("10"),
+			attr: pdata.NewValueString("10"),
 			code: pdata.StatusCodeError,
 		},
 
 		{
 			name: "string-ok",
-			attr: pdata.NewAttributeValueString("101"),
+			attr: pdata.NewValueString("101"),
 			code: pdata.StatusCodeUnset,
 		},
 
 		{
 			name: "int-not-found",
-			attr: pdata.NewAttributeValueInt(404),
+			attr: pdata.NewValueInt(404),
 			code: pdata.StatusCodeError,
 		},
 		{
 			name: "int-invalid-arg",
-			attr: pdata.NewAttributeValueInt(408),
+			attr: pdata.NewValueInt(408),
 			code: pdata.StatusCodeError,
 		},
 
 		{
 			name: "int-internal",
-			attr: pdata.NewAttributeValueInt(500),
+			attr: pdata.NewValueInt(500),
 			code: pdata.StatusCodeError,
 		},
 	}
@@ -175,88 +175,94 @@ func TestJTagsToInternalAttributes(t *testing.T) {
 	require.EqualValues(t, expected, got)
 }
 
-func TestProtoBatchToInternalTraces(t *testing.T) {
+func TestProtoToTraces(t *testing.T) {
 
 	tests := []struct {
 		name string
-		jb   model.Batch
+		jb   []*model.Batch
 		td   pdata.Traces
 	}{
 		{
 			name: "empty",
-			jb:   model.Batch{},
+			jb:   []*model.Batch{},
 			td:   pdata.NewTraces(),
 		},
 
 		{
 			name: "no-spans",
-			jb: model.Batch{
-				Process: generateProtoProcess(),
-			},
+			jb: []*model.Batch{
+				{
+					Process: generateProtoProcess(),
+				}},
 			td: generateTracesResourceOnly(),
 		},
 
 		{
 			name: "no-resource-attrs",
-			jb: model.Batch{
-				Process: &model.Process{
-					ServiceName: tracetranslator.ResourceNoServiceName,
-				},
-			},
+			jb: []*model.Batch{
+				{
+					Process: &model.Process{
+						ServiceName: tracetranslator.ResourceNoServiceName,
+					},
+				}},
 			td: generateTracesResourceOnlyWithNoAttrs(),
 		},
 
 		{
 			name: "one-span-no-resources",
-			jb: model.Batch{
-				Process: &model.Process{
-					ServiceName: tracetranslator.ResourceNoServiceName,
-				},
-				Spans: []*model.Span{
-					generateProtoSpanWithTraceState(),
-				},
-			},
+			jb: []*model.Batch{
+				{
+					Process: &model.Process{
+						ServiceName: tracetranslator.ResourceNoServiceName,
+					},
+					Spans: []*model.Span{
+						generateProtoSpanWithTraceState(),
+					},
+				}},
 			td: generateTracesOneSpanNoResourceWithTraceState(),
 		},
 		{
 			name: "two-spans-child-parent",
-			jb: model.Batch{
-				Process: &model.Process{
-					ServiceName: tracetranslator.ResourceNoServiceName,
-				},
-				Spans: []*model.Span{
-					generateProtoSpan(),
-					generateProtoChildSpan(),
-				},
-			},
+			jb: []*model.Batch{
+				{
+					Process: &model.Process{
+						ServiceName: tracetranslator.ResourceNoServiceName,
+					},
+					Spans: []*model.Span{
+						generateProtoSpan(),
+						generateProtoChildSpan(),
+					},
+				}},
 			td: generateTracesTwoSpansChildParent(),
 		},
 
 		{
 			name: "two-spans-with-follower",
-			jb: model.Batch{
-				Process: &model.Process{
-					ServiceName: tracetranslator.ResourceNoServiceName,
-				},
-				Spans: []*model.Span{
-					generateProtoSpan(),
-					generateProtoFollowerSpan(),
-				},
-			},
+			jb: []*model.Batch{
+				{
+					Process: &model.Process{
+						ServiceName: tracetranslator.ResourceNoServiceName,
+					},
+					Spans: []*model.Span{
+						generateProtoSpan(),
+						generateProtoFollowerSpan(),
+					},
+				}},
 			td: generateTracesTwoSpansWithFollower(),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			td := ProtoBatchToInternalTraces(test.jb)
+			td, err := ProtoToTraces(test.jb)
+			assert.NoError(t, err)
 			assert.EqualValues(t, test.td, td)
 		})
 	}
 }
 
 func TestProtoBatchToInternalTracesWithTwoLibraries(t *testing.T) {
-	jb := model.Batch{
+	jb := &model.Batch{
 		Process: &model.Process{
 			ServiceName: tracetranslator.ResourceNoServiceName,
 		},
@@ -267,11 +273,11 @@ func TestProtoBatchToInternalTracesWithTwoLibraries(t *testing.T) {
 				OperationName: "operation2",
 				Tags: []model.KeyValue{
 					{
-						Key:   conventions.InstrumentationLibraryName,
+						Key:   conventions.OtelLibraryName,
 						VType: model.ValueType_STRING,
 						VStr:  "library2",
 					}, {
-						Key:   conventions.InstrumentationLibraryVersion,
+						Key:   conventions.OtelLibraryVersion,
 						VType: model.ValueType_STRING,
 						VStr:  "0.42.0",
 					},
@@ -284,11 +290,11 @@ func TestProtoBatchToInternalTracesWithTwoLibraries(t *testing.T) {
 				OperationName: "operation1",
 				Tags: []model.KeyValue{
 					{
-						Key:   conventions.InstrumentationLibraryName,
+						Key:   conventions.OtelLibraryName,
 						VType: model.ValueType_STRING,
 						VStr:  "library1",
 					}, {
-						Key:   conventions.InstrumentationLibraryVersion,
+						Key:   conventions.OtelLibraryVersion,
 						VType: model.ValueType_STRING,
 						VStr:  "0.42.0",
 					},
@@ -300,7 +306,8 @@ func TestProtoBatchToInternalTracesWithTwoLibraries(t *testing.T) {
 	library1Span := expected.ResourceSpans().At(0).InstrumentationLibrarySpans().At(0)
 	library2Span := expected.ResourceSpans().At(0).InstrumentationLibrarySpans().At(1)
 
-	actual := ProtoBatchToInternalTraces(jb)
+	actual, err := ProtoToTraces([]*model.Batch{jb})
+	assert.NoError(t, err)
 
 	assert.Equal(t, actual.ResourceSpans().Len(), 1)
 	assert.Equal(t, actual.ResourceSpans().At(0).InstrumentationLibrarySpans().Len(), 2)
@@ -342,69 +349,69 @@ func TestSetInternalSpanStatus(t *testing.T) {
 	}{
 		{
 			name:             "No tags set -> OK status",
-			attrs:            pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{}),
+			attrs:            pdata.NewAttributeMapFromMap(map[string]pdata.Value{}),
 			status:           emptyStatus,
 			attrsModifiedLen: 0,
 		},
 		{
 			name: "error tag set -> Error status",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				tracetranslator.TagError: pdata.NewAttributeValueBool(true),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				tracetranslator.TagError: pdata.NewValueBool(true),
 			}),
 			status:           errorStatus,
 			attrsModifiedLen: 0,
 		},
 		{
 			name: "status.code is set as string",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				conventions.OtelStatusCode: pdata.NewAttributeValueString(statusOk),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				conventions.OtelStatusCode: pdata.NewValueString(statusOk),
 			}),
 			status:           okStatus,
 			attrsModifiedLen: 0,
 		},
 		{
 			name: "status.code, status.message and error tags are set",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				tracetranslator.TagError:          pdata.NewAttributeValueBool(true),
-				conventions.OtelStatusCode:        pdata.NewAttributeValueString(statusError),
-				conventions.OtelStatusDescription: pdata.NewAttributeValueString("Error: Invalid argument"),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				tracetranslator.TagError:          pdata.NewValueBool(true),
+				conventions.OtelStatusCode:        pdata.NewValueString(statusError),
+				conventions.OtelStatusDescription: pdata.NewValueString("Error: Invalid argument"),
 			}),
 			status:           errorStatusWithMessage,
 			attrsModifiedLen: 0,
 		},
 		{
 			name: "http.status_code tag is set as string",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				conventions.AttributeHTTPStatusCode: pdata.NewAttributeValueString("404"),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				conventions.AttributeHTTPStatusCode: pdata.NewValueString("404"),
 			}),
 			status:           errorStatus,
 			attrsModifiedLen: 1,
 		},
 		{
 			name: "http.status_code, http.status_message and error tags are set",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				tracetranslator.TagError:            pdata.NewAttributeValueBool(true),
-				conventions.AttributeHTTPStatusCode: pdata.NewAttributeValueInt(404),
-				tracetranslator.TagHTTPStatusMsg:    pdata.NewAttributeValueString("HTTP 404: Not Found"),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				tracetranslator.TagError:            pdata.NewValueBool(true),
+				conventions.AttributeHTTPStatusCode: pdata.NewValueInt(404),
+				tracetranslator.TagHTTPStatusMsg:    pdata.NewValueString("HTTP 404: Not Found"),
 			}),
 			status:           errorStatusWith404Message,
 			attrsModifiedLen: 2,
 		},
 		{
 			name: "status.code has precedence over http.status_code.",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				conventions.OtelStatusCode:          pdata.NewAttributeValueString(statusOk),
-				conventions.AttributeHTTPStatusCode: pdata.NewAttributeValueInt(500),
-				tracetranslator.TagHTTPStatusMsg:    pdata.NewAttributeValueString("Server Error"),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				conventions.OtelStatusCode:          pdata.NewValueString(statusOk),
+				conventions.AttributeHTTPStatusCode: pdata.NewValueInt(500),
+				tracetranslator.TagHTTPStatusMsg:    pdata.NewValueString("Server Error"),
 			}),
 			status:           okStatus,
 			attrsModifiedLen: 2,
 		},
 		{
 			name: "Ignore http.status_code == 200 if error set to true.",
-			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.AttributeValue{
-				tracetranslator.TagError:            pdata.NewAttributeValueBool(true),
-				conventions.AttributeHTTPStatusCode: pdata.NewAttributeValueInt(200),
+			attrs: pdata.NewAttributeMapFromMap(map[string]pdata.Value{
+				tracetranslator.TagError:            pdata.NewValueBool(true),
+				conventions.AttributeHTTPStatusCode: pdata.NewValueInt(200),
 			}),
 			status:           errorStatus,
 			attrsModifiedLen: 1,
@@ -448,7 +455,8 @@ func TestProtoBatchesToInternalTraces(t *testing.T) {
 	twoSpans := generateTracesTwoSpansChildParent().ResourceSpans().At(0)
 	twoSpans.CopyTo(tgt)
 
-	got := ProtoBatchesToInternalTraces(batches)
+	got, err := ProtoToTraces(batches)
+	assert.NoError(t, err)
 	assert.EqualValues(t, expected, got)
 }
 
@@ -618,11 +626,11 @@ func generateProtoSpanWithLibraryInfo(libraryName string) *model.Span {
 	span := generateProtoSpan()
 	span.Tags = append([]model.KeyValue{
 		{
-			Key:   conventions.InstrumentationLibraryName,
+			Key:   conventions.OtelLibraryName,
 			VType: model.ValueType_STRING,
 			VStr:  libraryName,
 		}, {
-			Key:   conventions.InstrumentationLibraryVersion,
+			Key:   conventions.OtelLibraryVersion,
 			VType: model.ValueType_STRING,
 			VStr:  "0.42.0",
 		},
@@ -805,17 +813,19 @@ func generateProtoFollowerSpan() *model.Span {
 }
 
 func BenchmarkProtoBatchToInternalTraces(b *testing.B) {
-	jb := model.Batch{
-		Process: generateProtoProcess(),
-		Spans: []*model.Span{
-			generateProtoSpan(),
-			generateProtoChildSpan(),
-		},
-	}
+	jb := []*model.Batch{
+		{
+			Process: generateProtoProcess(),
+			Spans: []*model.Span{
+				generateProtoSpan(),
+				generateProtoChildSpan(),
+			},
+		}}
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		ProtoBatchToInternalTraces(jb)
+		_, err := ProtoToTraces(jb)
+		assert.NoError(b, err)
 	}
 }
 

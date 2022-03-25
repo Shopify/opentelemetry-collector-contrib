@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/service/featuregate"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 )
@@ -33,10 +34,10 @@ const (
 
 // NewFactory creates a new Prometheus exporter factory.
 func NewFactory() component.ExporterFactory {
-	return exporterhelper.NewFactory(
+	return component.NewExporterFactory(
 		typeStr,
 		createDefaultConfig,
-		exporterhelper.WithMetrics(createMetricsExporter))
+		component.WithMetricsExporter(createMetricsExporter))
 }
 
 func createDefaultConfig() config.Exporter {
@@ -46,6 +47,7 @@ func createDefaultConfig() config.Exporter {
 		SendTimestamps:    false,
 		MetricExpiration:  time.Minute * 5,
 		EnableOpenMetrics: false,
+		skipSanitizeLabel: featuregate.IsEnabled(dropSanitizationGate.ID),
 	}
 }
 

@@ -26,11 +26,11 @@ import (
 
 func TestNumericTagFilter(t *testing.T) {
 
-	var empty = map[string]pdata.AttributeValue{}
+	var empty = map[string]pdata.Value{}
 	filter := NewNumericAttributeFilter(zap.NewNop(), "example", math.MinInt32, math.MaxInt32)
 
-	resAttr := map[string]pdata.AttributeValue{}
-	resAttr["example"] = pdata.NewAttributeValueInt(8)
+	resAttr := map[string]pdata.Value{}
+	resAttr["example"] = pdata.NewValueInt(8)
 
 	cases := []struct {
 		Desc     string
@@ -74,13 +74,7 @@ func TestNumericTagFilter(t *testing.T) {
 	}
 }
 
-func TestOnLateArrivingSpans_NumericTagFilter(t *testing.T) {
-	filter := NewNumericAttributeFilter(zap.NewNop(), "example", math.MinInt32, math.MaxInt32)
-	err := filter.OnLateArrivingSpans(NotSampled, nil)
-	assert.Nil(t, err)
-}
-
-func newTraceIntAttrs(nodeAttrs map[string]pdata.AttributeValue, spanAttrKey string, spanAttrValue int64) *TraceData {
+func newTraceIntAttrs(nodeAttrs map[string]pdata.Value, spanAttrKey string, spanAttrValue int64) *TraceData {
 	var traceBatches []pdata.Traces
 	traces := pdata.NewTraces()
 	rs := traces.ResourceSpans().AppendEmpty()
@@ -89,8 +83,8 @@ func newTraceIntAttrs(nodeAttrs map[string]pdata.AttributeValue, spanAttrKey str
 	span := ils.Spans().AppendEmpty()
 	span.SetTraceID(pdata.NewTraceID([16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}))
 	span.SetSpanID(pdata.NewSpanID([8]byte{1, 2, 3, 4, 5, 6, 7, 8}))
-	attributes := make(map[string]pdata.AttributeValue)
-	attributes[spanAttrKey] = pdata.NewAttributeValueInt(spanAttrValue)
+	attributes := make(map[string]pdata.Value)
+	attributes[spanAttrKey] = pdata.NewValueInt(spanAttrValue)
 	pdata.NewAttributeMapFromMap(attributes).CopyTo(span.Attributes())
 	traceBatches = append(traceBatches, traces)
 	return &TraceData{

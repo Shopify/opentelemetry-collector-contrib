@@ -30,11 +30,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/model/pdata"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter/config"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter/internal/attributes"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter/internal/model/attributes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter/internal/testutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter/internal/utils"
 )
@@ -95,15 +95,15 @@ func NewResourceSpansData(mockTraceID [16]byte, mockSpanID [8]byte, mockParentSp
 	evt.SetTimestamp(pdataEndTime)
 	evt.SetName("end")
 	evt.Attributes().InsertBool("flag", false)
-	attribs := map[string]pdata.AttributeValue{
-		"cache_hit":  pdata.NewAttributeValueBool(true),
-		"timeout_ns": pdata.NewAttributeValueInt(12e9),
-		"ping_count": pdata.NewAttributeValueInt(25),
-		"agent":      pdata.NewAttributeValueString("ocagent"),
+	attribs := map[string]pdata.Value{
+		"cache_hit":  pdata.NewValueBool(true),
+		"timeout_ns": pdata.NewValueInt(12e9),
+		"ping_count": pdata.NewValueInt(25),
+		"agent":      pdata.NewValueString("ocagent"),
 	}
 
 	if statusCode == pdata.StatusCodeError {
-		attribs["http.status_code"] = pdata.NewAttributeValueString("501")
+		attribs["http.status_code"] = pdata.NewValueString("501")
 	}
 
 	pdata.NewAttributeMapFromMap(attribs).CopyTo(span.Attributes())
@@ -159,15 +159,15 @@ func TestRunningTraces(t *testing.T) {
 
 	rt := rts.AppendEmpty()
 	resAttrs := rt.Resource().Attributes()
-	resAttrs.Insert(attributes.AttributeDatadogHostname, pdata.NewAttributeValueString("resource-hostname-1"))
+	resAttrs.Insert(attributes.AttributeDatadogHostname, pdata.NewValueString("resource-hostname-1"))
 
 	rt = rts.AppendEmpty()
 	resAttrs = rt.Resource().Attributes()
-	resAttrs.Insert(attributes.AttributeDatadogHostname, pdata.NewAttributeValueString("resource-hostname-1"))
+	resAttrs.Insert(attributes.AttributeDatadogHostname, pdata.NewValueString("resource-hostname-1"))
 
 	rt = rts.AppendEmpty()
 	resAttrs = rt.Resource().Attributes()
-	resAttrs.Insert(attributes.AttributeDatadogHostname, pdata.NewAttributeValueString("resource-hostname-2"))
+	resAttrs.Insert(attributes.AttributeDatadogHostname, pdata.NewValueString("resource-hostname-2"))
 
 	rts.AppendEmpty()
 
@@ -308,7 +308,7 @@ func TestBasicTracesTranslation(t *testing.T) {
 	assert.Equal(t, "End-To-End Here", datadogPayload.Traces[0].Spans[0].Resource)
 
 	// ensure that span.name defaults to string representing instrumentation library if present
-	assert.Equal(t, strings.ToLower(fmt.Sprintf("%s.%s", datadogPayload.Traces[0].Spans[0].Meta[conventions.InstrumentationLibraryName], strings.TrimPrefix(pdata.SpanKindServer.String(), "SPAN_KIND_"))), datadogPayload.Traces[0].Spans[0].Name)
+	assert.Equal(t, strings.ToLower(fmt.Sprintf("%s.%s", datadogPayload.Traces[0].Spans[0].Meta[conventions.OtelLibraryName], strings.TrimPrefix(pdata.SpanKindServer.String(), "SPAN_KIND_"))), datadogPayload.Traces[0].Spans[0].Name)
 
 	// ensure that span.type is based on otlp span.kind
 	assert.Equal(t, "web", datadogPayload.Traces[0].Spans[0].Type)
@@ -479,10 +479,10 @@ func TestTracesTranslationErrorsFromEventsUsesLast(t *testing.T) {
 	mockSpanID := [8]byte{0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8}
 	mockParentSpanID := [8]byte{0xEF, 0xEE, 0xED, 0xEC, 0xEB, 0xEA, 0xE9, 0xE8}
 
-	attribs := map[string]pdata.AttributeValue{
-		conventions.AttributeExceptionType:       pdata.NewAttributeValueString("HttpError"),
-		conventions.AttributeExceptionStacktrace: pdata.NewAttributeValueString("HttpError at line 67\nthing at line 45"),
-		conventions.AttributeExceptionMessage:    pdata.NewAttributeValueString("HttpError error occurred"),
+	attribs := map[string]pdata.Value{
+		conventions.AttributeExceptionType:       pdata.NewValueString("HttpError"),
+		conventions.AttributeExceptionStacktrace: pdata.NewValueString("HttpError at line 67\nthing at line 45"),
+		conventions.AttributeExceptionMessage:    pdata.NewValueString("HttpError error occurred"),
 	}
 
 	mockEndTime := time.Now().Round(time.Second)
@@ -548,10 +548,10 @@ func TestTracesTranslationErrorsFromEventsBounds(t *testing.T) {
 	events.EnsureCapacity(3)
 
 	// Start with the error as the first element in the list...
-	attribs := map[string]pdata.AttributeValue{
-		conventions.AttributeExceptionType:       pdata.NewAttributeValueString("HttpError"),
-		conventions.AttributeExceptionStacktrace: pdata.NewAttributeValueString("HttpError at line 67\nthing at line 45"),
-		conventions.AttributeExceptionMessage:    pdata.NewAttributeValueString("HttpError error occurred"),
+	attribs := map[string]pdata.Value{
+		conventions.AttributeExceptionType:       pdata.NewValueString("HttpError"),
+		conventions.AttributeExceptionStacktrace: pdata.NewValueString("HttpError at line 67\nthing at line 45"),
+		conventions.AttributeExceptionMessage:    pdata.NewValueString("HttpError error occurred"),
 	}
 
 	evt := events.AppendEmpty()
@@ -826,7 +826,7 @@ func TestTracesTranslationServicePeerName(t *testing.T) {
 	assert.Equal(t, "End-To-End Here", datadogPayload.Traces[0].Spans[0].Resource)
 
 	// ensure that span.name defaults to string representing instrumentation library if present
-	assert.Equal(t, strings.ToLower(fmt.Sprintf("%s.%s", datadogPayload.Traces[0].Spans[0].Meta[conventions.InstrumentationLibraryName], strings.TrimPrefix(pdata.SpanKindServer.String(), "SPAN_KIND_"))), datadogPayload.Traces[0].Spans[0].Name)
+	assert.Equal(t, strings.ToLower(fmt.Sprintf("%s.%s", datadogPayload.Traces[0].Spans[0].Meta[conventions.OtelLibraryName], strings.TrimPrefix(pdata.SpanKindServer.String(), "SPAN_KIND_"))), datadogPayload.Traces[0].Spans[0].Name)
 
 	// ensure that span.type is based on otlp span.kind
 	assert.Equal(t, "web", datadogPayload.Traces[0].Spans[0].Type)
@@ -901,7 +901,7 @@ func TestTracesTranslationTruncatetag(t *testing.T) {
 	assert.Equal(t, "End-To-End Here", datadogPayload.Traces[0].Spans[0].Resource)
 
 	// ensure that span.name defaults to string representing instrumentation library if present
-	assert.Equal(t, strings.ToLower(fmt.Sprintf("%s.%s", datadogPayload.Traces[0].Spans[0].Meta[conventions.InstrumentationLibraryName], strings.TrimPrefix(pdata.SpanKindServer.String(), "SPAN_KIND_"))), datadogPayload.Traces[0].Spans[0].Name)
+	assert.Equal(t, strings.ToLower(fmt.Sprintf("%s.%s", datadogPayload.Traces[0].Spans[0].Meta[conventions.OtelLibraryName], strings.TrimPrefix(pdata.SpanKindServer.String(), "SPAN_KIND_"))), datadogPayload.Traces[0].Spans[0].Name)
 
 	// ensure that span.type is based on otlp span.kind
 	assert.Equal(t, "web", datadogPayload.Traces[0].Spans[0].Type)
@@ -1074,7 +1074,7 @@ func TestSpanNameTranslation(t *testing.T) {
 	span.SetKind(pdata.SpanKindServer)
 
 	ddIlTags := map[string]string{
-		fmt.Sprintf(conventions.InstrumentationLibraryName): "il_name",
+		fmt.Sprintf(conventions.OtelLibraryName): "il_name",
 	}
 
 	ddNoIlTags := map[string]string{
@@ -1179,7 +1179,7 @@ func TestILTagsExctraction(t *testing.T) {
 
 	extractInstrumentationLibraryTags(il, tags)
 
-	assert.Equal(t, "", tags[conventions.InstrumentationLibraryName])
+	assert.Equal(t, "", tags[conventions.OtelLibraryName])
 
 }
 
@@ -1555,8 +1555,8 @@ func TestSpanRateLimitTag(t *testing.T) {
 	instrumentationLibrary.SetVersion("v1")
 	span := ilss.Spans().AppendEmpty()
 
-	attribs := map[string]pdata.AttributeValue{
-		"_sample_rate": pdata.NewAttributeValueString("0.5"),
+	attribs := map[string]pdata.Value{
+		"_sample_rate": pdata.NewValueString("0.5"),
 	}
 
 	pdata.NewAttributeMapFromMap(attribs).CopyTo(span.Attributes())

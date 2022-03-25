@@ -23,7 +23,7 @@ import (
 
 	"github.com/jaegertracing/jaeger/model"
 	"go.opentelemetry.io/collector/model/pdata"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/idutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/occonventions"
@@ -32,11 +32,11 @@ import (
 
 var blankJaegerProtoSpan = new(model.Span)
 
-// ProtoBatchesToInternalTraces converts multiple Jaeger proto batches to internal traces
-func ProtoBatchesToInternalTraces(batches []*model.Batch) pdata.Traces {
+// ProtoToTraces converts multiple Jaeger proto batches to internal traces
+func ProtoToTraces(batches []*model.Batch) (pdata.Traces, error) {
 	traceData := pdata.NewTraces()
 	if len(batches) == 0 {
-		return traceData
+		return traceData, nil
 	}
 
 	rss := traceData.ResourceSpans()
@@ -50,20 +50,7 @@ func ProtoBatchesToInternalTraces(batches []*model.Batch) pdata.Traces {
 		protoBatchToResourceSpans(*batch, rss.AppendEmpty())
 	}
 
-	return traceData
-}
-
-// ProtoBatchToInternalTraces converts Jeager proto batch to internal traces
-func ProtoBatchToInternalTraces(batch model.Batch) pdata.Traces {
-	traceData := pdata.NewTraces()
-
-	if batch.GetProcess() == nil && len(batch.GetSpans()) == 0 {
-		return traceData
-	}
-
-	protoBatchToResourceSpans(batch, traceData.ResourceSpans().AppendEmpty())
-
-	return traceData
+	return traceData, nil
 }
 
 func protoBatchToResourceSpans(batch model.Batch, dest pdata.ResourceSpans) {
@@ -286,12 +273,12 @@ func extractStatusDescFromAttr(attrs pdata.AttributeMap) (string, bool) {
 // codeFromAttr returns the integer code value from attrVal. An error is
 // returned if the code is not represented by an integer or string value in
 // the attrVal or the value is outside the bounds of an int representation.
-func codeFromAttr(attrVal pdata.AttributeValue) (int64, error) {
+func codeFromAttr(attrVal pdata.Value) (int64, error) {
 	var val int64
 	switch attrVal.Type() {
-	case pdata.AttributeValueTypeInt:
+	case pdata.ValueTypeInt:
 		val = attrVal.IntVal()
-	case pdata.AttributeValueTypeString:
+	case pdata.ValueTypeString:
 		var err error
 		val, err = strconv.ParseInt(attrVal.StringVal(), 10, 0)
 		if err != nil {
@@ -303,7 +290,7 @@ func codeFromAttr(attrVal pdata.AttributeValue) (int64, error) {
 	return val, nil
 }
 
-func getStatusCodeFromHTTPStatusAttr(attrVal pdata.AttributeValue) (pdata.StatusCode, error) {
+func getStatusCodeFromHTTPStatusAttr(attrVal pdata.Value) (pdata.StatusCode, error) {
 	statusCode, err := codeFromAttr(attrVal)
 	if err != nil {
 		return pdata.StatusCodeUnset, err
@@ -389,9 +376,9 @@ func getTraceStateFromAttrs(attrs pdata.AttributeMap) pdata.TraceState {
 
 func getInstrumentationLibrary(span *model.Span) instrumentationLibrary {
 	il := instrumentationLibrary{}
-	if libraryName, ok := getAndDeleteTag(span, conventions.InstrumentationLibraryName); ok {
+	if libraryName, ok := getAndDeleteTag(span, conventions.OtelLibraryName); ok {
 		il.name = libraryName
-		if libraryVersion, ok := getAndDeleteTag(span, conventions.InstrumentationLibraryVersion); ok {
+		if libraryVersion, ok := getAndDeleteTag(span, conventions.OtelLibraryVersion); ok {
 			il.version = libraryVersion
 		}
 	}

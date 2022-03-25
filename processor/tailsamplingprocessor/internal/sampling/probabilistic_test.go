@@ -78,7 +78,7 @@ func TestProbabilisticSampling(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			traceCount := 100_000
 
-			var emptyAttrs = map[string]pdata.AttributeValue{}
+			var emptyAttrs = map[string]pdata.Value{}
 
 			probabilisticSampler := NewProbabilisticSampler(zap.NewNop(), tt.hashSalt, tt.samplingPercentage)
 
@@ -100,13 +100,6 @@ func TestProbabilisticSampling(t *testing.T) {
 			)
 		})
 	}
-}
-
-func TestOnLateArrivingSpans_PercentageSampling(t *testing.T) {
-	probabilisticSampler := NewProbabilisticSampler(zap.NewNop(), "", 10)
-
-	err := probabilisticSampler.OnLateArrivingSpans(NotSampled, nil)
-	assert.Nil(t, err)
 }
 
 func genRandomTraceIDs(num int) (ids []pdata.TraceID) {

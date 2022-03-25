@@ -103,7 +103,7 @@ func (tsm *timeseriesMapPdata) get(metric *pdata.Metric, kv pdata.AttributeMap) 
 // Create a unique timeseries signature consisting of the metric name and label values.
 func getTimeseriesSignaturePdata(name string, kv pdata.AttributeMap) string {
 	labelValues := make([]string, 0, kv.Len())
-	kv.Sort().Range(func(_ string, attrValue pdata.AttributeValue) bool {
+	kv.Sort().Range(func(_ string, attrValue pdata.Value) bool {
 		value := attrValue.StringVal()
 		if value != "" {
 			labelValues = append(labelValues, value)
@@ -300,14 +300,22 @@ func (ma *MetricsAdjusterPdata) adjustMetricGauge(current *pdata.Metric) (resets
 	for i := 0; i < currentPoints.Len(); i++ {
 		currentGauge := currentPoints.At(i)
 		tsi := ma.tsm.get(current, currentGauge.Attributes())
+
 		previous := tsi.previous
+		if previous == nil {
+			// no previous data point with values
+			// use the initial data point
+			previous = tsi.initial
+		}
 		tsi.previous = current
+
 		if tsi.initial == nil {
 			// initial || reset timeseries.
 			tsi.initial = current
 			resets++
 			continue
 		}
+
 		initialPoints := tsi.initial.Gauge().DataPoints()
 		previousPoints := previous.Gauge().DataPoints()
 		if i >= initialPoints.Len() || i >= previousPoints.Len() {
@@ -351,16 +359,25 @@ func (ma *MetricsAdjusterPdata) adjustMetricHistogram(current *pdata.Metric) (re
 	for i := 0; i < currentPoints.Len(); i++ {
 		currentDist := currentPoints.At(i)
 		tsi := ma.tsm.get(current, currentDist.Attributes())
+
 		previous := tsi.previous
+		if previous == nil {
+			// no previous data point with values
+			// use the initial data point
+			previous = tsi.initial
+		}
+
 		if !currentDist.Flags().HasFlag(pdata.MetricDataPointFlagNoRecordedValue) {
 			tsi.previous = current
 		}
+
 		if tsi.initial == nil {
 			// initial || reset timeseries.
 			tsi.initial = current
 			resets++
 			continue
 		}
+
 		initialPoints := tsi.initial.Histogram().DataPoints()
 		previousPoints := previous.Histogram().DataPoints()
 		if i >= initialPoints.Len() || i >= previousPoints.Len() {
@@ -396,16 +413,25 @@ func (ma *MetricsAdjusterPdata) adjustMetricSum(current *pdata.Metric) (resets i
 	for i := 0; i < currentPoints.Len(); i++ {
 		currentSum := currentPoints.At(i)
 		tsi := ma.tsm.get(current, currentSum.Attributes())
+
 		previous := tsi.previous
+		if previous == nil {
+			// no previous data point with values
+			// use the initial data point
+			previous = tsi.initial
+		}
+
 		if !currentSum.Flags().HasFlag(pdata.MetricDataPointFlagNoRecordedValue) {
 			tsi.previous = current
 		}
+
 		if tsi.initial == nil {
 			// initial || reset timeseries.
 			tsi.initial = current
 			resets++
 			continue
 		}
+
 		initialPoints := tsi.initial.Sum().DataPoints()
 		previousPoints := previous.Sum().DataPoints()
 		if i >= initialPoints.Len() || i >= previousPoints.Len() {
@@ -441,16 +467,25 @@ func (ma *MetricsAdjusterPdata) adjustMetricSummary(current *pdata.Metric) (rese
 	for i := 0; i < currentPoints.Len(); i++ {
 		currentSummary := currentPoints.At(i)
 		tsi := ma.tsm.get(current, currentSummary.Attributes())
+
 		previous := tsi.previous
+		if previous == nil {
+			// no previous data point with values
+			// use the initial data point
+			previous = tsi.initial
+		}
+
 		if !currentSummary.Flags().HasFlag(pdata.MetricDataPointFlagNoRecordedValue) {
 			tsi.previous = current
 		}
+
 		if tsi.initial == nil {
 			// initial || reset timeseries.
 			tsi.initial = current
 			resets++
 			continue
 		}
+
 		initialPoints := tsi.initial.Summary().DataPoints()
 		previousPoints := previous.Summary().DataPoints()
 		if i >= initialPoints.Len() || i >= previousPoints.Len() {

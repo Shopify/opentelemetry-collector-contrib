@@ -349,7 +349,7 @@ func TestAccumulateMetrics(t *testing.T) {
 
 			require.Equal(t, v.instrumentationLibrary.Name(), "test")
 			require.Equal(t, v.value.DataType(), ilm2.Metrics().At(0).DataType())
-			vLabels.Range(func(k string, v pdata.AttributeValue) bool {
+			vLabels.Range(func(k string, v pdata.Value) bool {
 				r, _ := m2Labels.Get(k)
 				require.Equal(t, r, v)
 				return true
@@ -397,7 +397,7 @@ func getMetricProperties(metric pdata.Metric) (
 		attributes = metric.Gauge().DataPoints().At(0).Attributes()
 		ts = metric.Gauge().DataPoints().At(0).Timestamp().AsTime()
 		dp := metric.Gauge().DataPoints().At(0)
-		switch dp.Type() {
+		switch dp.ValueType() {
 		case pdata.MetricValueTypeInt:
 			value = float64(dp.IntVal())
 		case pdata.MetricValueTypeDouble:
@@ -409,7 +409,7 @@ func getMetricProperties(metric pdata.Metric) (
 		attributes = metric.Sum().DataPoints().At(0).Attributes()
 		ts = metric.Sum().DataPoints().At(0).Timestamp().AsTime()
 		dp := metric.Sum().DataPoints().At(0)
-		switch dp.Type() {
+		switch dp.ValueType() {
 		case pdata.MetricValueTypeInt:
 			value = float64(dp.IntVal())
 		case pdata.MetricValueTypeDouble:

@@ -78,8 +78,8 @@ func (gap *groupByAttrsProcessor) processLogs(ctx context.Context, ld pdata.Logs
 		ills := ls.InstrumentationLibraryLogs()
 		for j := 0; j < ills.Len(); j++ {
 			ill := ills.At(j)
-			for k := 0; k < ill.Logs().Len(); k++ {
-				log := ill.Logs().At(k)
+			for k := 0; k < ill.LogRecords().Len(); k++ {
+				log := ill.LogRecords().At(k)
 
 				toBeGrouped, requiredAttributes := gap.extractGroupingAttributes(log.Attributes())
 				if toBeGrouped {
@@ -94,7 +94,7 @@ func (gap *groupByAttrsProcessor) processLogs(ctx context.Context, ld pdata.Logs
 				// Lets combine the base resource attributes + the extracted (grouped) attributes
 				// and keep them in the grouping entry
 				groupedLogs := groupedResourceLogs.findResourceOrElseCreate(ls.Resource(), requiredAttributes)
-				lr := matchingInstrumentationLibraryLogs(groupedLogs, ill.InstrumentationLibrary()).Logs().AppendEmpty()
+				lr := matchingInstrumentationLibraryLogs(groupedLogs, ill.InstrumentationLibrary()).LogRecords().AppendEmpty()
 				log.CopyTo(lr)
 			}
 		}
@@ -173,7 +173,7 @@ func (gap *groupByAttrsProcessor) processMetrics(ctx context.Context, md pdata.M
 }
 
 func deleteAttributes(attrsForRemoval, targetAttrs pdata.AttributeMap) {
-	attrsForRemoval.Range(func(key string, _ pdata.AttributeValue) bool {
+	attrsForRemoval.Range(func(key string, _ pdata.Value) bool {
 		targetAttrs.Delete(key)
 		return true
 	})

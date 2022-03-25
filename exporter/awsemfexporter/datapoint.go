@@ -114,7 +114,7 @@ func (dps numberDataPointSlice) At(i int) (dataPoint, bool) {
 	timestampMs := unixNanoToMilliseconds(metric.Timestamp())
 
 	var metricVal float64
-	switch metric.Type() {
+	switch metric.ValueType() {
 	case pdata.MetricValueTypeDouble:
 		metricVal = metric.DoubleVal()
 	case pdata.MetricValueTypeInt:
@@ -200,7 +200,7 @@ func (dps summaryDataPointSlice) At(i int) (dataPoint, bool) {
 // and optionally adds in the OTel instrumentation library name
 func createLabels(attributes pdata.AttributeMap, instrLibName string) map[string]string {
 	labels := make(map[string]string, attributes.Len()+1)
-	attributes.Range(func(k string, v pdata.AttributeValue) bool {
+	attributes.Range(func(k string, v pdata.Value) bool {
 		labels[k] = v.AsString()
 		return true
 	})

@@ -32,7 +32,6 @@ import (
 var (
 	errUnsetAPIKey = errors.New("api.key is not set")
 	errNoMetadata  = errors.New("only_metadata can't be enabled when send_metadata or use_resource_metadata is disabled")
-	errBuckets     = errors.New("'metrics::report_buckets' is obsolete. Use 'metrics::histograms::mode' instead")
 )
 
 // TODO: Import these from translator when we eliminate cyclic dependency.
@@ -51,11 +50,12 @@ const (
 type APIConfig struct {
 	// Key is the Datadog API key to associate your Agent's data with your organization.
 	// Create a new API key here: https://app.datadoghq.com/account/settings
-	// It can also be set through the `DD_API_KEY` environment variable.
+	//
+	// It can also be set through the `DD_API_KEY` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	Key string `mapstructure:"key"`
 
 	// Site is the site of the Datadog intake to send data to.
-	// It can also be set through the `DD_SITE` environment variable.
+	// It can also be set through the `DD_SITE` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	// The default value is "datadoghq.com".
 	Site string `mapstructure:"site"`
 }
@@ -83,7 +83,7 @@ type MetricsConfig struct {
 	DeltaTTL int64 `mapstructure:"delta_ttl"`
 
 	// TCPAddr.Endpoint is the host of the Datadog intake server to send metrics to.
-	// It can also be set through the `DD_URL` environment variable.
+	// It can also be set through the `DD_URL` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead)..
 	// If unset, the value is obtained from the Site.
 	confignet.TCPAddr `mapstructure:",squash"`
 
@@ -131,7 +131,7 @@ type MetricsExporterConfig struct {
 // TracesConfig defines the traces exporter specific configuration options
 type TracesConfig struct {
 	// TCPAddr.Endpoint is the host of the Datadog intake server to send traces to.
-	// It can also be set through the `DD_APM_URL` environment variable.
+	// It can also be set through the `DD_APM_URL` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	// If unset, the value is obtained from the Site.
 	confignet.TCPAddr `mapstructure:",squash"`
 
@@ -164,27 +164,29 @@ type TracesConfig struct {
 // It is embedded in the configuration
 type TagsConfig struct {
 	// Hostname is the host name for unified service tagging.
-	// It can also be set through the `DD_HOST` environment variable.
+	// It can also be set through the `DD_HOST` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	// If unset, it is determined automatically.
 	// See https://docs.datadoghq.com/agent/faq/how-datadog-agent-determines-the-hostname
 	// for more details.
 	Hostname string `mapstructure:"hostname"`
 
 	// Env is the environment for unified service tagging.
-	// It can also be set through the `DD_ENV` environment variable.
+	// It can also be set through the `DD_ENV` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	Env string `mapstructure:"env"`
 
 	// Service is the service for unified service tagging.
-	// It can also be set through the `DD_SERVICE` environment variable.
+	// It can also be set through the `DD_SERVICE` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	Service string `mapstructure:"service"`
 
 	// Version is the version for unified service tagging.
-	// It can also be set through the `DD_VERSION` environment variable.
+	// It can also be set through the `DD_VERSION` environment variable (Deprecated: [v0.47.0] set environment variable explicitly on configuration instead).
 	Version string `mapstructure:"version"`
 
 	// EnvVarTags is the list of space-separated tags passed by the `DD_TAGS` environment variable
 	// Superseded by Tags if the latter is set.
 	// Should not be set in the user-provided config.
+	//
+	// Deprecated: [v0.47.0] Use Tags instead.
 	EnvVarTags string `mapstructure:"envvartags"`
 
 	// Tags is the list of default tags to add to every metric or trace.
@@ -205,12 +207,25 @@ func (t *TagsConfig) GetHostTags() []string {
 	return tags
 }
 
+// LimitedTLSClientSetting is a subset of TLSClientSetting, see LimitedHTTPClientSettings for more details
+type LimitedTLSClientSettings struct {
+	// InsecureSkipVerify controls whether a client verifies the server's
+	// certificate chain and host name.
+	InsecureSkipVerify bool `mapstructure:"insecure_skip_verify"`
+}
+
+type LimitedHTTPClientSettings struct {
+	TLSSetting LimitedTLSClientSettings `mapstructure:"tls,omitempty"`
+}
+
 // Config defines configuration for the Datadog exporter.
 type Config struct {
 	config.ExporterSettings        `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct
 	exporterhelper.TimeoutSettings `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct.
 	exporterhelper.QueueSettings   `mapstructure:"sending_queue"`
 	exporterhelper.RetrySettings   `mapstructure:"retry_on_failure"`
+
+	LimitedHTTPClientSettings `mapstructure:",squash"`
 
 	TagsConfig `mapstructure:",squash"`
 
@@ -253,6 +268,9 @@ type Config struct {
 	warnings []error
 }
 
+// OnceMetadata gets a sync.Once instance used for initializing the host metadata.
+// Deprecated: [v0.48.0] do not use, will be removed on v0.49.0.
+// TODO (#8373): Remove this method.
 func (c *Config) OnceMetadata() *sync.Once {
 	return &c.onceMetadata
 }
@@ -292,7 +310,7 @@ func (c *Config) Sanitize(logger *zap.Logger) error {
 	}
 
 	for _, err := range c.warnings {
-		logger.Warn("deprecation warning", zap.Error(err))
+		logger.Warn(fmt.Sprintf("Deprecated: %v", err))
 	}
 
 	return nil
@@ -328,12 +346,6 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) Unmarshal(configMap *config.Map) error {
-	// metrics::report_buckets is obsolete, return an error to
-	// tell the user to use metrics::histograms::mode instead.
-	if configMap.IsSet("metrics::report_buckets") {
-		return errBuckets
-	}
-
 	err := configMap.UnmarshalExact(c)
 	if err != nil {
 		return err
@@ -345,6 +357,9 @@ func (c *Config) Unmarshal(configMap *config.Map) error {
 	default:
 		return fmt.Errorf("invalid `mode` %s", c.Metrics.HistConfig.Mode)
 	}
+
+	// Add warnings about autodetected environment variables.
+	c.warnings = append(c.warnings, warnUseOfEnvVars(configMap, c)...)
 
 	return nil
 }

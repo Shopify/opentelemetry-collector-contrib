@@ -30,7 +30,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/model/pdata"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.8.0"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/k8sconfig"
@@ -261,7 +261,7 @@ func generateLogs(resourceFunc ...generateResourceFunc) pdata.Logs {
 		res := ls.Resource()
 		resFun(res)
 	}
-	log := ls.InstrumentationLibraryLogs().AppendEmpty().Logs().AppendEmpty()
+	log := ls.InstrumentationLibraryLogs().AppendEmpty().LogRecords().AppendEmpty()
 	log.SetName("foobar")
 	return l
 }
@@ -292,7 +292,7 @@ func withContainerName(containerName string) generateResourceFunc {
 
 func withContainerRunID(containerRunID string) generateResourceFunc {
 	return func(res pdata.Resource) {
-		res.Attributes().InsertString(k8sContainerRestartCountAttrName, containerRunID)
+		res.Attributes().InsertString(conventions.AttributeK8SContainerRestartCount, containerRunID)
 	}
 }
 
@@ -756,10 +756,10 @@ func TestProcessorAddContainerAttributes(t *testing.T) {
 				withContainerRunID("1"),
 			},
 			wantAttrs: map[string]string{
-				k8sIPLabelName:                        "1.1.1.1",
-				conventions.AttributeK8SContainerName: "app",
-				k8sContainerRestartCountAttrName:      "1",
-				conventions.AttributeContainerID:      "6a7f1a598b5dafec9c193f8f8d63f6e5839b8b0acd2fe780f94285e26c05580e",
+				k8sIPLabelName:                                "1.1.1.1",
+				conventions.AttributeK8SContainerName:         "app",
+				conventions.AttributeK8SContainerRestartCount: "1",
+				conventions.AttributeContainerID:              "6a7f1a598b5dafec9c193f8f8d63f6e5839b8b0acd2fe780f94285e26c05580e",
 			},
 		},
 		{
@@ -783,9 +783,9 @@ func TestProcessorAddContainerAttributes(t *testing.T) {
 				withContainerRunID("0"),
 			},
 			wantAttrs: map[string]string{
-				k8sIPLabelName:                        "1.1.1.1",
-				conventions.AttributeK8SContainerName: "new-app",
-				k8sContainerRestartCountAttrName:      "0",
+				k8sIPLabelName:                                "1.1.1.1",
+				conventions.AttributeK8SContainerName:         "new-app",
+				conventions.AttributeK8SContainerRestartCount: "0",
 			},
 		},
 		{
@@ -808,10 +808,10 @@ func TestProcessorAddContainerAttributes(t *testing.T) {
 				withContainerRunID("1"),
 			},
 			wantAttrs: map[string]string{
-				k8sIPLabelName:                          "1.1.1.1",
-				conventions.AttributeK8SContainerName:   "app",
-				k8sContainerRestartCountAttrName:        "1",
-				conventions.AttributeContainerImageName: "test/app",
+				k8sIPLabelName:                                "1.1.1.1",
+				conventions.AttributeK8SContainerName:         "app",
+				conventions.AttributeK8SContainerRestartCount: "1",
+				conventions.AttributeContainerImageName:       "test/app",
 			},
 		},
 	}
@@ -1093,38 +1093,38 @@ func TestStartStop(t *testing.T) {
 func assertResourceHasStringAttribute(t *testing.T, r pdata.Resource, k, v string) {
 	got, ok := r.Attributes().Get(k)
 	require.True(t, ok, fmt.Sprintf("resource does not contain attribute %s", k))
-	assert.EqualValues(t, pdata.AttributeValueTypeString, got.Type(), "attribute %s is not of type string", k)
+	assert.EqualValues(t, pdata.ValueTypeString, got.Type(), "attribute %s is not of type string", k)
 	assert.EqualValues(t, v, got.StringVal(), "attribute %s is not equal to %s", k, v)
 }
 
 func Test_intFromAttribute(t *testing.T) {
 	tests := []struct {
 		name    string
-		attrVal pdata.AttributeValue
+		attrVal pdata.Value
 		wantInt int
 		wantErr bool
 	}{
 		{
 			name:    "wrong-type",
-			attrVal: pdata.NewAttributeValueBool(true),
+			attrVal: pdata.NewValueBool(true),
 			wantInt: 0,
 			wantErr: true,
 		},
 		{
 			name:    "wrong-string-number",
-			attrVal: pdata.NewAttributeValueString("NaN"),
+			attrVal: pdata.NewValueString("NaN"),
 			wantInt: 0,
 			wantErr: true,
 		},
 		{
 			name:    "valid-string-number",
-			attrVal: pdata.NewAttributeValueString("3"),
+			attrVal: pdata.NewValueString("3"),
 			wantInt: 3,
 			wantErr: false,
 		},
 		{
 			name:    "valid-int-number",
-			attrVal: pdata.NewAttributeValueInt(1),
+			attrVal: pdata.NewValueInt(1),
 			wantInt: 1,
 			wantErr: false,
 		},

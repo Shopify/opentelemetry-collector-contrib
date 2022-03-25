@@ -20,12 +20,12 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"go.opentelemetry.io/collector/model/pdata"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 
 	awsxray "github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/xray"
 )
 
-func makeAws(attributes map[string]pdata.AttributeValue, resource pdata.Resource) (map[string]pdata.AttributeValue, *awsxray.AWSData) {
+func makeAws(attributes map[string]pdata.Value, resource pdata.Resource) (map[string]pdata.Value, *awsxray.AWSData) {
 	var (
 		cloud        string
 		service      string
@@ -65,8 +65,8 @@ func makeAws(attributes map[string]pdata.AttributeValue, resource pdata.Resource
 		eks          *awsxray.EKSMetadata
 	)
 
-	filtered := make(map[string]pdata.AttributeValue)
-	resource.Attributes().Range(func(key string, value pdata.AttributeValue) bool {
+	filtered := make(map[string]pdata.Value)
+	resource.Attributes().Range(func(key string, value pdata.Value) bool {
 		switch key {
 		case conventions.AttributeCloudProvider:
 			cloud = value.StringVal()
@@ -137,7 +137,7 @@ func makeAws(attributes map[string]pdata.AttributeValue, resource pdata.Resource
 		case awsxray.AWSOperationAttribute:
 			// Determinstically handled with if else above
 		case awsxray.AWSAccountAttribute:
-			if value.Type() != pdata.AttributeValueTypeEmpty {
+			if value.Type() != pdata.ValueTypeEmpty {
 				account = value.StringVal()
 			}
 		case awsxray.AWSRegionAttribute:

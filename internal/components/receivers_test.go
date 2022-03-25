@@ -30,7 +30,7 @@ import (
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/testutil"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/testutil"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/stanza"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/carbonreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
@@ -59,6 +59,9 @@ func TestDefaultReceivers(t *testing.T) {
 		{
 			receiver:     "awsecscontainermetrics",
 			skipLifecyle: true, // Requires container metaendpoint to be running
+		},
+		{
+			receiver: "awsfirehose",
 		},
 		{
 			receiver:     "awsxray",
@@ -195,6 +198,9 @@ func TestDefaultReceivers(t *testing.T) {
 		},
 		{
 			receiver: "prometheus_simple",
+		},
+		{
+			receiver: "skywalking",
 		},
 		{
 			receiver: "splunk_hec",

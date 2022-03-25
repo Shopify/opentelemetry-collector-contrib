@@ -83,6 +83,10 @@ func addAttributesToMetric(metric *pdata.Metric, labelMap pdata.AttributeMap) {
 		addAttributesToNumberDataPoints(metric.Sum().DataPoints(), labelMap)
 	case pdata.MetricDataTypeHistogram:
 		addAttributesToHistogramDataPoints(metric.Histogram().DataPoints(), labelMap)
+	case pdata.MetricDataTypeSummary:
+		addAttributesToSummaryDataPoints(metric.Summary().DataPoints(), labelMap)
+	case pdata.MetricDataTypeExponentialHistogram:
+		addAttributesToExponentialHistogramDataPoints(metric.ExponentialHistogram().DataPoints(), labelMap)
 	}
 }
 
@@ -98,8 +102,20 @@ func addAttributesToHistogramDataPoints(ps pdata.HistogramDataPointSlice, newAtt
 	}
 }
 
+func addAttributesToSummaryDataPoints(ps pdata.SummaryDataPointSlice, newAttributeMap pdata.AttributeMap) {
+	for i := 0; i < ps.Len(); i++ {
+		joinAttributeMaps(newAttributeMap, ps.At(i).Attributes())
+	}
+}
+
+func addAttributesToExponentialHistogramDataPoints(ps pdata.ExponentialHistogramDataPointSlice, newAttributeMap pdata.AttributeMap) {
+	for i := 0; i < ps.Len(); i++ {
+		joinAttributeMaps(newAttributeMap, ps.At(i).Attributes())
+	}
+}
+
 func joinAttributeMaps(from, to pdata.AttributeMap) {
-	from.Range(func(k string, v pdata.AttributeValue) bool {
+	from.Range(func(k string, v pdata.Value) bool {
 		to.Upsert(k, v)
 		return true
 	})

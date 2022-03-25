@@ -27,7 +27,7 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/model/pdata"
-	conventions "go.opentelemetry.io/collector/model/semconv/v1.5.0"
+	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 )
 
 func createSpanID(stringVal string) [8]byte {
@@ -401,7 +401,7 @@ func TestToHumioAttributes(t *testing.T) {
 			desc: "Array element",
 			attr: func() pdata.AttributeMap {
 				attrMap := pdata.NewAttributeMap()
-				arr := pdata.NewAttributeValueArray()
+				arr := pdata.NewValueArray()
 				arr.SliceVal().AppendEmpty().SetStringVal("a")
 				arr.SliceVal().AppendEmpty().SetStringVal("b")
 				arr.SliceVal().AppendEmpty().SetIntVal(4)
@@ -418,7 +418,7 @@ func TestToHumioAttributes(t *testing.T) {
 			desc: "Nested map",
 			attr: func() pdata.AttributeMap {
 				attrMap := pdata.NewAttributeMap()
-				nested := pdata.NewAttributeValueMap()
+				nested := pdata.NewValueMap()
 				nested.MapVal().InsertString("key", "val")
 				attrMap.Insert("nested", nested)
 				attrMap.InsertBool("active", true)

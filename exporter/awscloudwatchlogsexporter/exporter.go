@@ -154,7 +154,7 @@ func logsToCWLogs(logger *zap.Logger, ld pdata.Logs) ([]*cloudwatchlogs.InputLog
 		ills := rl.InstrumentationLibraryLogs()
 		for j := 0; j < ills.Len(); j++ {
 			ils := ills.At(j)
-			logs := ils.Logs()
+			logs := ils.LogRecords()
 			for k := 0; k < logs.Len(); k++ {
 				log := logs.At(k)
 				event, err := logToCWLog(resourceAttrs, log)
@@ -171,7 +171,6 @@ func logsToCWLogs(logger *zap.Logger, ld pdata.Logs) ([]*cloudwatchlogs.InputLog
 }
 
 type cwLogBody struct {
-	Name                   string                 `json:"name,omitempty"`
 	Body                   interface{}            `json:"body,omitempty"`
 	SeverityNumber         int32                  `json:"severity_number,omitempty"`
 	SeverityText           string                 `json:"severity_text,omitempty"`
@@ -187,7 +186,6 @@ func logToCWLog(resourceAttrs map[string]interface{}, log pdata.LogRecord) (*clo
 	// TODO(jbd): Benchmark and improve the allocations.
 	// Evaluate go.elastic.co/fastjson as a replacement for encoding/json.
 	body := cwLogBody{
-		Name:                   log.Name(),
 		Body:                   attrValue(log.Body()),
 		SeverityNumber:         int32(log.SeverityNumber()),
 		SeverityText:           log.SeverityText(),
@@ -218,38 +216,38 @@ func attrsValue(attrs pdata.AttributeMap) map[string]interface{} {
 		return nil
 	}
 	out := make(map[string]interface{}, attrs.Len())
-	attrs.Range(func(k string, v pdata.AttributeValue) bool {
+	attrs.Range(func(k string, v pdata.Value) bool {
 		out[k] = attrValue(v)
 		return true
 	})
 	return out
 }
 
-func attrValue(value pdata.AttributeValue) interface{} {
+func attrValue(value pdata.Value) interface{} {
 	switch value.Type() {
-	case pdata.AttributeValueTypeInt:
+	case pdata.ValueTypeInt:
 		return value.IntVal()
-	case pdata.AttributeValueTypeBool:
+	case pdata.ValueTypeBool:
 		return value.BoolVal()
-	case pdata.AttributeValueTypeDouble:
+	case pdata.ValueTypeDouble:
 		return value.DoubleVal()
-	case pdata.AttributeValueTypeString:
+	case pdata.ValueTypeString:
 		return value.StringVal()
-	case pdata.AttributeValueTypeMap:
+	case pdata.ValueTypeMap:
 		values := map[string]interface{}{}
-		value.MapVal().Range(func(k string, v pdata.AttributeValue) bool {
+		value.MapVal().Range(func(k string, v pdata.Value) bool {
 			values[k] = attrValue(v)
 			return true
 		})
 		return values
-	case pdata.AttributeValueTypeArray:
+	case pdata.ValueTypeArray:
 		arrayVal := value.SliceVal()
 		values := make([]interface{}, arrayVal.Len())
 		for i := 0; i < arrayVal.Len(); i++ {
 			values[i] = attrValue(arrayVal.At(i))
 		}
 		return values
-	case pdata.AttributeValueTypeEmpty:
+	case pdata.ValueTypeEmpty:
 		return nil
 	default:
 		return nil
