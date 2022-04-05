@@ -205,7 +205,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		e := ip.Exemplars().At(i)
 
 		labels := prometheus.Labels{}
-		e.FilteredAttributes().Range(func(k string, v pdata.AttributeValue) bool {
+		e.FilteredAttributes().Range(func(k string, v pdata.Value) bool {
 			labels[k] = v.AsString()
 			return true
 		})
