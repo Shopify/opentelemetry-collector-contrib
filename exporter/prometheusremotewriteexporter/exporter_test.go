@@ -16,6 +16,7 @@ package prometheusremotewriteexporter
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -398,6 +399,7 @@ func Test_PushMetrics(t *testing.T) {
 	staleNaNSumBatch := getMetricsFromMetricList(staleNaNMetrics[staleNaNSum])
 
 	checkFunc := func(t *testing.T, r *http.Request, expected int, isStaleMarker bool) {
+		fmt.Println(t.Name())
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			t.Fatal(err)
@@ -413,6 +415,7 @@ func Test_PushMetrics(t *testing.T) {
 		wr := &prompb.WriteRequest{}
 		ok := proto.Unmarshal(dest, wr)
 		require.Nil(t, ok)
+		fmt.Println(len(wr.Timeseries), expected)
 		assert.EqualValues(t, expected, len(wr.Timeseries))
 		if isStaleMarker {
 			assert.True(t, value.IsStaleNaN(wr.Timeseries[0].Samples[0].Value))
@@ -617,10 +620,12 @@ func Test_PushMetrics(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			for _, tt := range tests {
+				fmt.Println(">>>", tt.name, tt.expectedTimeSeries)
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
 					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						if tt.reqTestFunc != nil {
+							fmt.Println("->", tt.expectedTimeSeries)
 							tt.reqTestFunc(t, r, tt.expectedTimeSeries, tt.isStaleMarker)
 						}
 						w.WriteHeader(tt.httpResponseCode)
