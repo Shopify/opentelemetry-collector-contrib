@@ -46,7 +46,7 @@ type Config struct {
 	// ResourceToTelemetrySettings defines configuration for converting resource attributes to metric labels.
 	ResourceToTelemetrySettings resourcetotelemetry.Settings `mapstructure:"resource_to_telemetry_conversion"`
 
-	//enables OpenMetrics encoding option for prometheus exporter.
+	// EnableOpenMetrics enables the use of the OpenMetrics encoding option for the prometheus exporter.
 	EnableOpenMetrics bool `mapstructure:"enable_open_metrics"`
 
 	// skipSanitizeLabel if enabled, labels that start with _ are not sanitized
