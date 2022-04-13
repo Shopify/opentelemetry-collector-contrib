@@ -223,7 +223,10 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 	}
 
 	if arrLen > 0 {
-		m = prometheus.MustNewMetricWithExemplars(m, exemplars...)
+		m, err = prometheus.NewMetricWithExemplars(m, exemplars...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.sendTimestamps {
