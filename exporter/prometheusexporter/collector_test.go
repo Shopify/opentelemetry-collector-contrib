@@ -112,7 +112,7 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 		},
 		{
 			Timestamp: exemplarTs,
-			Value:     20,
+			Value:     50,
 			Labels:    prometheus.Labels{"test_label_1": "label_value_1"},
 		},
 		{
@@ -131,7 +131,7 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 		}
 		pde.SetTimestamp(pdata.NewTimestampFromTime(e.Timestamp))
 	}
-	
+
 	c := collector{
 		accumulator: &mockAccumulator{
 			[]pdata.Metric{metric},
@@ -153,11 +153,9 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	require.Equal(t, "test_label_0", buckets[0].GetExemplar().GetLabel()[0].GetName())
 	require.Equal(t, "label_value_0", buckets[0].GetExemplar().GetLabel()[0].GetValue())
 
-	require.Equal(t, 20.0, buckets[1].GetExemplar().GetValue())
-	require.Equal(t, int32(128654848), buckets[1].GetExemplar().GetTimestamp().GetNanos())
-	require.Equal(t, 1, len(buckets[1].GetExemplar().GetLabel()))
-	require.Equal(t, "test_label_1", buckets[1].GetExemplar().GetLabel()[0].GetName())
-	require.Equal(t, "label_value_1", buckets[1].GetExemplar().GetLabel()[0].GetValue())
+	require.Equal(t, 0.0, buckets[1].GetExemplar().GetValue())
+	require.Equal(t, int32(0), buckets[1].GetExemplar().GetTimestamp().GetNanos())
+	require.Equal(t, 0, len(buckets[1].GetExemplar().GetLabel()))
 
 	require.Equal(t, 78.0, buckets[2].GetExemplar().GetValue())
 	require.Equal(t, int32(128654848), buckets[2].GetExemplar().GetTimestamp().GetNanos())
