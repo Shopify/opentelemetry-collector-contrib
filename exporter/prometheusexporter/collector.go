@@ -21,7 +21,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/collector/model/pdata"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 type collector struct {
@@ -211,7 +210,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		})
 
 		exemplars[i] = prometheus.Exemplar{
-			Value:     *proto.Float64(e.DoubleVal()),
+			Value:     e.DoubleVal(),
 			Labels:    labels,
 			Timestamp: e.Timestamp().AsTime(),
 		}

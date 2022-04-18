@@ -98,28 +98,27 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	// initialize empty datapoint
 	hd := metric.Histogram().DataPoints().AppendEmpty()
 
-	bounds := []float64{5, 25, 100}
+	bounds := []float64{5, 25, 90}
 	hd.SetExplicitBounds(bounds)
-	bc := []uint64{15, 1700, 89}
+	bc := []uint64{2, 35, 70}
 	hd.SetBucketCounts(bc)
 
 	exemplarTs, _ := time.Parse("unix", "Mon Jan _2 15:04:05 MST 2006")
-	exemplarLabels := prometheus.Labels{"test_label": "label_value"}
 	exemplars := []prometheus.Exemplar{
 		{
 			Timestamp: exemplarTs,
 			Value:     3,
-			Labels:    exemplarLabels,
+			Labels:    prometheus.Labels{"test_label_0": "label_value_0"},
 		},
 		{
 			Timestamp: exemplarTs,
-			Value:     44,
-			Labels:    exemplarLabels,
+			Value:     20,
+			Labels:    prometheus.Labels{"test_label_1": "label_value_1"},
 		},
 		{
 			Timestamp: exemplarTs,
 			Value:     78,
-			Labels:    exemplarLabels,
+			Labels:    prometheus.Labels{"test_label_2": "label_value_2"},
 		},
 	}
 
@@ -132,7 +131,7 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 		}
 		pde.SetTimestamp(pdata.NewTimestampFromTime(e.Timestamp))
 	}
-
+	
 	c := collector{
 		accumulator: &mockAccumulator{
 			[]pdata.Metric{metric},
@@ -150,10 +149,21 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 
 	require.Equal(t, 3.0, buckets[0].GetExemplar().GetValue())
 	require.Equal(t, int32(128654848), buckets[0].GetExemplar().GetTimestamp().GetNanos())
-
 	require.Equal(t, 1, len(buckets[0].GetExemplar().GetLabel()))
-	require.Equal(t, "test_label", buckets[0].GetExemplar().GetLabel()[0].GetName())
-	require.Equal(t, "label_value", buckets[0].GetExemplar().GetLabel()[0].GetValue())
+	require.Equal(t, "test_label_0", buckets[0].GetExemplar().GetLabel()[0].GetName())
+	require.Equal(t, "label_value_0", buckets[0].GetExemplar().GetLabel()[0].GetValue())
+
+	require.Equal(t, 20.0, buckets[1].GetExemplar().GetValue())
+	require.Equal(t, int32(128654848), buckets[1].GetExemplar().GetTimestamp().GetNanos())
+	require.Equal(t, 1, len(buckets[1].GetExemplar().GetLabel()))
+	require.Equal(t, "test_label_1", buckets[1].GetExemplar().GetLabel()[0].GetName())
+	require.Equal(t, "label_value_1", buckets[1].GetExemplar().GetLabel()[0].GetValue())
+
+	require.Equal(t, 78.0, buckets[2].GetExemplar().GetValue())
+	require.Equal(t, int32(128654848), buckets[2].GetExemplar().GetTimestamp().GetNanos())
+	require.Equal(t, 1, len(buckets[2].GetExemplar().GetLabel()))
+	require.Equal(t, "test_label_2", buckets[2].GetExemplar().GetLabel()[0].GetName())
+	require.Equal(t, "label_value_2", buckets[2].GetExemplar().GetLabel()[0].GetValue())
 }
 
 // errorCheckCore keeps track of logged errors
