@@ -176,6 +176,7 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 
 	indicesMap := make(map[float64]int)
 	buckets := make([]float64, 0, len(ip.BucketCounts()))
+
 	for index, bucket := range ip.ExplicitBounds() {
 		if _, added := indicesMap[bucket]; !added {
 			indicesMap[bucket] = index
@@ -197,9 +198,34 @@ func (c *collector) convertDoubleHistogram(metric pdata.Metric) (prometheus.Metr
 		points[bucket] = cumCount
 	}
 
+	arrLen := ip.Exemplars().Len()
+	exemplars := make([]prometheus.Exemplar, arrLen)
+	for i := 0; i < arrLen; i++ {
+		e := ip.Exemplars().At(i)
+
+		labels := make(prometheus.Labels, e.FilteredAttributes().Len())
+		e.FilteredAttributes().Range(func(k string, v pdata.Value) bool {
+			labels[k] = v.AsString()
+			return true
+		})
+
+		exemplars[i] = prometheus.Exemplar{
+			Value:     e.DoubleVal(),
+			Labels:    labels,
+			Timestamp: e.Timestamp().AsTime(),
+		}
+	}
+
 	m, err := prometheus.NewConstHistogram(desc, ip.Count(), ip.Sum(), points, attributes...)
 	if err != nil {
 		return nil, err
+	}
+
+	if arrLen > 0 {
+		m, err = prometheus.NewMetricWithExemplars(m, exemplars...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.sendTimestamps {
