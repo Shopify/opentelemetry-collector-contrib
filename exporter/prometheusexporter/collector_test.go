@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/model/pdata"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
@@ -144,11 +145,12 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	c := collector{
 		accumulator: &mockAccumulator{
 			[]pdata.Metric{metric},
+			pcommon.NewMap(),
 		},
 		logger: zap.NewNop(),
 	}
 
-	pbMetric, _ := c.convertDoubleHistogram(metric)
+	pbMetric, _ := c.convertDoubleHistogram(metric, pcommon.NewMap())
 	m := io_prometheus_client.Metric{}
 	pbMetric.Write(&m)
 

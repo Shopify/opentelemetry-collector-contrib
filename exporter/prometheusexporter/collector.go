@@ -20,6 +20,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"go.opentelemetry.io/collector/model/pdata"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
@@ -222,7 +223,7 @@ func (c *collector) convertDoubleHistogram(metric pmetric.Metric, resourceAttrs 
 		e := ip.Exemplars().At(i)
 
 		labels := make(prometheus.Labels, e.FilteredAttributes().Len())
-		e.FilteredAttributes().Range(func(k string, v pdata.AttributeValue) bool {
+		e.FilteredAttributes().Range(func(k string, v pdata.Value) bool {
 			labels[k] = v.AsString()
 			return true
 		})
