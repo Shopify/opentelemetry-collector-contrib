@@ -151,6 +151,7 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	}
 
 	pbMetric, _ := c.convertDoubleHistogram(metric, pcommon.NewMap())
+	pbMetric, _ := c.convertDoubleHistogram(metric)
 	m := io_prometheus_client.Metric{}
 	pbMetric.Write(&m)
 
