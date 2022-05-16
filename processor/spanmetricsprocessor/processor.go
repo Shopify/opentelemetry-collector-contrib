@@ -390,7 +390,7 @@ func (p *processorImp) aggregateMetricsForServiceSpans(rspans ptrace.ResourceSpa
 		spans := ils.Spans()
 		for k := 0; k < spans.Len(); k++ {
 			span := spans.At(k)
-			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.InstrumentationLibrary()) {
+			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.Scope()) {
 				continue
 			}
 			p.aggregateMetricsForSpan(serviceName, span, rspans.Resource().Attributes())
