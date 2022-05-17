@@ -41,7 +41,7 @@ func TestLogRecord_validateMatchesConfiguration_InvalidConfig(t *testing.T) {
 		{
 			name:        "empty_property",
 			property:    filterconfig.MatchProperties{},
-			errorString: `at least one of "attributes", "libraries", "resources", "log_bodies" or "log_severity_texts" field must be specified`,
+			errorString: `at least one of "log_names", "log_bodies", "log_severity_texts", "attributes", "libraries", "span_kinds", or "resources" field must be specified`,
 		},
 		{
 			name: "empty_log_bodies_and_attributes",
@@ -49,14 +49,14 @@ func TestLogRecord_validateMatchesConfiguration_InvalidConfig(t *testing.T) {
 				LogBodies:        []string{},
 				LogSeverityTexts: []string{},
 			},
-			errorString: `at least one of "attributes", "libraries", "resources", "log_bodies" or "log_severity_texts" field must be specified`,
+			errorString: `at least one of "log_names", "log_bodies", "log_severity_texts", "attributes", "libraries", "span_kinds", or "resources" field must be specified`,
 		},
 		{
 			name: "span_properties",
 			property: filterconfig.MatchProperties{
 				SpanNames: []string{"span"},
 			},
-			errorString: "neither services nor span_names should be specified for log records",
+			errorString: "services, span_names, and span_kinds are not valid for log records",
 		},
 		{
 			name: "invalid_match_type",

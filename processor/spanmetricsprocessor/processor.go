@@ -119,7 +119,8 @@ func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer cons
 		}
 	}
 
-	if err := validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
+	err = validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel)
+	if err != nil {
 		return nil, err
 	}
 

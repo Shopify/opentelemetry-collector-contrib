@@ -48,7 +48,7 @@ func createDefaultConfig() config.Exporter {
 		MetricExpiration:  time.Minute * 5,
 		EnableOpenMetrics: false,
 		skipSanitizeLabel: featuregate.GetRegistry().IsEnabled(dropSanitizationGate.ID),
-  }
+	}
 }
 
 func createMetricsExporter(
