@@ -17,6 +17,7 @@ package spanmetricsprocessor // import "github.com/open-telemetry/opentelemetry-
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strings"
@@ -24,12 +25,15 @@ import (
 	"time"
 	"unicode"
 
+	"go.opencensus.io/stats/view"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/model/pdata"
 	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 	"go.uber.org/zap"
+
+	"go.opencensus.io/stats"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterspan"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor/internal/cache"
@@ -53,7 +57,18 @@ var (
 	defaultLatencyHistogramBucketsMs = []float64{
 		2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000, maxDurationMs,
 	}
+
+	dimensionsCacheSize = stats.Int64("dimensions_cache_size", "size of LRU cache of dimension key-value maps keyed by a unique identifier ", stats.UnitBytes)
 )
+
+func metricViews() []*view.View {
+	return []*view.View{
+		{
+			Measure:     dimensionsCacheSize,
+			Aggregation: view.LastValue(),
+		},
+	}
+}
 
 type exemplarData struct {
 	traceID pdata.TraceID
@@ -222,6 +237,10 @@ func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 	if p.metricsExporter == nil {
 		return fmt.Errorf("failed to find metrics exporter: '%s'; please configure metrics_exporter from one of: %+v",
 			p.config.MetricsExporter, availableMetricsExporters)
+	}
+
+	if err := view.Register(metricViews()...); err != nil {
+		log.Fatalf(err.Error())
 	}
 	p.logger.Info("Started spanmetricsprocessor")
 	return nil
@@ -410,6 +429,7 @@ func (p *processorImp) aggregateMetricsForSpan(serviceName string, span pdata.Sp
 	p.updateLatencyMetrics(key, latencyInMilliseconds, index)
 	p.updateLatencyExemplars(key, latencyInMilliseconds, span.TraceID())
 	p.lock.Unlock()
+	dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len()))
 }
 
 // updateCallMetrics increments the call count for the given metric key.
