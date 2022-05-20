@@ -429,7 +429,6 @@ func (p *processorImp) aggregateMetricsForSpan(serviceName string, span pdata.Sp
 	p.updateLatencyMetrics(key, latencyInMilliseconds, index)
 	p.updateLatencyExemplars(key, latencyInMilliseconds, span.TraceID())
 	p.lock.Unlock()
-	dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len()))
 }
 
 // updateCallMetrics increments the call count for the given metric key.
@@ -549,6 +548,8 @@ func getDimensionValue(d Dimension, spanAttr pdata.AttributeMap, resourceAttr pd
 //   LabelsMap().InitFromMap(p.metricKeyToDimensions[key])
 func (p *processorImp) cache(serviceName string, span pdata.Span, k metricKey, resourceAttrs pdata.AttributeMap) {
 	p.metricKeyToDimensions.ContainsOrAdd(k, p.buildDimensionKVs(serviceName, span, p.dimensions, resourceAttrs))
+	dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len()))
+	fmt.Println(">>>> cache called: ", p.metricKeyToDimensions.Len())
 }
 
 // copied from prometheus-go-metric-exporter
