@@ -57,7 +57,10 @@ var (
 		2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000, maxDurationMs,
 	}
 
-	dimensionsCacheSize = stats.Int64("dimensions_cache_size", "size of LRU cache of dimension key-value maps keyed by a unique identifier ", stats.UnitBytes)
+	dimensionsCacheSize   = stats.Int64("dimensions_cache_size", "size of LRU cache of dimension key-value maps keyed by a unique identifier.", stats.UnitDimensionless)
+	uniqueTimeSeriesCount = stats.Int64("unique_time_series_count", "number of unique time series.", stats.UnitDimensionless)
+	spanIngestedCount     = stats.Int64("span_count", "number of spans ingested", stats.UnitDimensionless)
+	spanProcessedCount    = stats.Int64("span_count", "number of spans processed", stats.UnitDimensionless)
 )
 
 func metricViews() []*view.View {
@@ -65,6 +68,18 @@ func metricViews() []*view.View {
 		{
 			Measure:     dimensionsCacheSize,
 			Aggregation: view.LastValue(),
+		},
+		{
+			Measure:     uniqueTimeSeriesCount,
+			Aggregation: view.LastValue(),
+		},
+		{
+			Measure:     spanIngestedCount,
+			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     spanProcessedCount,
+			Aggregation: view.Sum(),
 		},
 	}
 }
@@ -260,6 +275,8 @@ func (p *processorImp) Capabilities() consumer.Capabilities {
 // It aggregates the trace data to generate metrics, forwarding these metrics to the discovered metrics exporter.
 // The original input trace data will be forwarded to the next consumer, unmodified.
 func (p *processorImp) ConsumeTraces(ctx context.Context, traces pdata.Traces) error {
+	stats.Record(ctx, spanIngestedCount.M(int64(traces.SpanCount())))
+
 	p.aggregateMetrics(traces)
 
 	m, err := p.buildMetrics()
@@ -428,11 +445,13 @@ func (p *processorImp) aggregateMetricsForSpan(serviceName string, span pdata.Sp
 	p.updateLatencyMetrics(key, latencyInMilliseconds, index)
 	p.updateLatencyExemplars(key, latencyInMilliseconds, span.TraceID())
 	p.lock.Unlock()
+	stats.Record(context.TODO(), spanProcessedCount.M(int64(1))) // count 1 here for a processed span.
 }
 
 // updateCallMetrics increments the call count for the given metric key.
 func (p *processorImp) updateCallMetrics(key metricKey) {
 	p.callSum[key]++
+	stats.Record(context.TODO(), uniqueTimeSeriesCount.M(int64(len(p.callSum))))
 }
 
 // resetAccumulatedMetrics resets the internal maps used to store created metric data. Also purge the cache for
@@ -548,7 +567,6 @@ func getDimensionValue(d Dimension, spanAttr pdata.AttributeMap, resourceAttr pd
 func (p *processorImp) cache(serviceName string, span pdata.Span, k metricKey, resourceAttrs pdata.AttributeMap) {
 	p.metricKeyToDimensions.ContainsOrAdd(k, p.buildDimensionKVs(serviceName, span, p.dimensions, resourceAttrs))
 	stats.Record(context.TODO(), dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
-	fmt.Println(">>>> cache called: ", p.metricKeyToDimensions.Len())
 }
 
 // copied from prometheus-go-metric-exporter
