@@ -25,6 +25,7 @@ import (
 	"time"
 	"unicode"
 
+	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
@@ -32,8 +33,6 @@ import (
 	"go.opentelemetry.io/collector/model/pdata"
 	conventions "go.opentelemetry.io/collector/model/semconv/v1.6.1"
 	"go.uber.org/zap"
-
-	"go.opencensus.io/stats"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterspan"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor/internal/cache"
@@ -548,7 +547,7 @@ func getDimensionValue(d Dimension, spanAttr pdata.AttributeMap, resourceAttr pd
 //   LabelsMap().InitFromMap(p.metricKeyToDimensions[key])
 func (p *processorImp) cache(serviceName string, span pdata.Span, k metricKey, resourceAttrs pdata.AttributeMap) {
 	p.metricKeyToDimensions.ContainsOrAdd(k, p.buildDimensionKVs(serviceName, span, p.dimensions, resourceAttrs))
-	dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len()))
+	stats.Record(context.TODO(), dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
 	fmt.Println(">>>> cache called: ", p.metricKeyToDimensions.Len())
 }
 
