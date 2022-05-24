@@ -59,8 +59,8 @@ var (
 
 	dimensionsCacheSize   = stats.Int64("dimensions_cache_size", "size of LRU cache of dimension key-value maps keyed by a unique identifier.", stats.UnitDimensionless)
 	uniqueTimeSeriesCount = stats.Int64("unique_time_series_count", "number of unique time series.", stats.UnitDimensionless)
-	spanIngestedCount     = stats.Int64("span_count", "number of spans ingested", stats.UnitDimensionless)
-	spanProcessedCount    = stats.Int64("span_count", "number of spans processed", stats.UnitDimensionless)
+	spanIngestedCount     = stats.Int64("span_ingested_count", "number of spans ingested", stats.UnitDimensionless)
+	spanProcessedCount    = stats.Int64("span_processed_count", "number of spans processed", stats.UnitDimensionless)
 )
 
 func metricViews() []*view.View {
