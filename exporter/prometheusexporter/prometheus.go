@@ -41,7 +41,7 @@ type prometheusExporter struct {
 
 var (
 	errBlankPrometheusAddress = errors.New("expecting a non-blank address to run the Prometheus metrics handler")
-	activeTimeSeries          = stats.Int64("active_time_series", "number of metrics time series currently active", stats.UnitDimensionless)
+	activeTimeSeries          = stats.Int64("prometheusexporter_active_time_series", "number of metrics time series currently active", stats.UnitDimensionless)
 )
 
 func metricViews() []*view.View {
