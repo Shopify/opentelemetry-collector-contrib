@@ -222,6 +222,12 @@ func validateDimensions(dimensions []Dimension, skipSanitizeLabel bool) error {
 	return nil
 }
 
+func init() {
+	if err := view.Register(metricViews()...); err != nil {
+		log.Fatalf(err.Error())
+	}
+}
+
 // Start implements the component.Component interface.
 func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 	p.logger.Info("Starting spanmetricsprocessor")
@@ -253,9 +259,6 @@ func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 			p.config.MetricsExporter, availableMetricsExporters)
 	}
 
-	if err := view.Register(metricViews()...); err != nil {
-		log.Fatalf(err.Error())
-	}
 	p.logger.Info("Started spanmetricsprocessor")
 	return nil
 }
@@ -277,7 +280,7 @@ func (p *processorImp) Capabilities() consumer.Capabilities {
 func (p *processorImp) ConsumeTraces(ctx context.Context, traces pdata.Traces) error {
 	stats.Record(ctx, spanIngestedCount.M(int64(traces.SpanCount())))
 
-	p.aggregateMetrics(traces)
+	p.aggregateMetrics(ctx, traces)
 
 	m, err := p.buildMetrics()
 	if err != nil {
@@ -352,7 +355,6 @@ func (p *processorImp) collectLatencyMetrics(ilm pdata.InstrumentationLibraryMet
 		dimensions, err := p.getDimensionsByMetricKey(key)
 		if err != nil {
 			p.logger.Error(err.Error())
-			//count metric key error
 			return err
 		}
 
@@ -379,7 +381,7 @@ func (p *processorImp) collectCallMetrics(ilm pdata.InstrumentationLibraryMetric
 		dimensions, err := p.getDimensionsByMetricKey(key)
 		if err != nil {
 			p.logger.Error(err.Error())
-			//if err.Error()
+
 			return err
 		}
 
@@ -404,7 +406,7 @@ func (p *processorImp) getDimensionsByMetricKey(k metricKey) (*pdata.AttributeMa
 // Each metric is identified by a key that is built from the service name
 // and span metadata such as operation, kind, status_code and any additional
 // dimensions the user has configured.
-func (p *processorImp) aggregateMetrics(traces pdata.Traces) {
+func (p *processorImp) aggregateMetrics(ctx context.Context, traces pdata.Traces) {
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
 		rspans := traces.ResourceSpans().At(i)
 		r := rspans.Resource()
@@ -414,22 +416,28 @@ func (p *processorImp) aggregateMetrics(traces pdata.Traces) {
 			continue
 		}
 		serviceName := attr.StringVal()
-		p.aggregateMetricsForServiceSpans(rspans, serviceName)
+		p.aggregateMetricsForServiceSpans(ctx, rspans, serviceName)
 	}
+
+	stats.Record(ctx, dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
+	stats.Record(ctx, uniqueTimeSeriesCount.M(int64(len(p.callSum))))
 }
 
-func (p *processorImp) aggregateMetricsForServiceSpans(rspans pdata.ResourceSpans, serviceName string) {
+func (p *processorImp) aggregateMetricsForServiceSpans(ctx context.Context, rspans pdata.ResourceSpans, serviceName string) {
 	ilsSlice := rspans.InstrumentationLibrarySpans()
 	for j := 0; j < ilsSlice.Len(); j++ {
 		ils := ilsSlice.At(j)
 		spans := ils.Spans()
+		spanCounter := 0
 		for k := 0; k < spans.Len(); k++ {
 			span := spans.At(k)
 			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.InstrumentationLibrary()) {
 				continue
 			}
 			p.aggregateMetricsForSpan(serviceName, span, rspans.Resource().Attributes())
+			spanCounter++
 		}
+		stats.Record(ctx, spanProcessedCount.M(int64(spanCounter)))
 	}
 }
 
@@ -447,13 +455,11 @@ func (p *processorImp) aggregateMetricsForSpan(serviceName string, span pdata.Sp
 	p.updateLatencyMetrics(key, latencyInMilliseconds, index)
 	p.updateLatencyExemplars(key, latencyInMilliseconds, span.TraceID())
 	p.lock.Unlock()
-	stats.Record(context.TODO(), spanProcessedCount.M(int64(1))) // count 1 here for a processed span.
 }
 
 // updateCallMetrics increments the call count for the given metric key.
 func (p *processorImp) updateCallMetrics(key metricKey) {
 	p.callSum[key]++
-	stats.Record(context.TODO(), uniqueTimeSeriesCount.M(int64(len(p.callSum))))
 }
 
 // resetAccumulatedMetrics resets the internal maps used to store created metric data. Also purge the cache for
@@ -568,7 +574,6 @@ func getDimensionValue(d Dimension, spanAttr pdata.AttributeMap, resourceAttr pd
 //   LabelsMap().InitFromMap(p.metricKeyToDimensions[key])
 func (p *processorImp) cache(serviceName string, span pdata.Span, k metricKey, resourceAttrs pdata.AttributeMap) {
 	p.metricKeyToDimensions.ContainsOrAdd(k, p.buildDimensionKVs(serviceName, span, p.dimensions, resourceAttrs))
-	stats.Record(context.TODO(), dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
 }
 
 // copied from prometheus-go-metric-exporter

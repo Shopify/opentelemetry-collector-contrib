@@ -79,14 +79,16 @@ func newPrometheusExporter(config *Config, set component.ExporterCreateSettings)
 	}, nil
 }
 
+func init() {
+	if err := view.Register(metricViews()...); err != nil {
+		log.Fatalf(err.Error())
+	}
+}
+
 func (pe *prometheusExporter) Start(_ context.Context, _ component.Host) error {
 	ln, err := net.Listen("tcp", pe.endpoint)
 	if err != nil {
 		return err
-	}
-
-	if err := view.Register(metricViews()...); err != nil {
-		log.Fatalf(err.Error())
 	}
 
 	pe.shutdownFunc = ln.Close
@@ -101,13 +103,13 @@ func (pe *prometheusExporter) Start(_ context.Context, _ component.Host) error {
 	return nil
 }
 
-func (pe *prometheusExporter) ConsumeMetrics(_ context.Context, md pdata.Metrics) error {
+func (pe *prometheusExporter) ConsumeMetrics(ctx context.Context, md pdata.Metrics) error {
 	n := 0
 	rmetrics := md.ResourceMetrics()
 	for i := 0; i < rmetrics.Len(); i++ {
 		n += pe.collector.processMetrics(rmetrics.At(i))
 	}
-	stats.Record(context.TODO(), activeTimeSeries.M(int64(md.MetricCount())))
+	stats.Record(ctx, activeTimeSeries.M(int64(md.MetricCount())))
 
 	return nil
 }
