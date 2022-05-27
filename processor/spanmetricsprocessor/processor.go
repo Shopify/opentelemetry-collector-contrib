@@ -16,6 +16,7 @@ package spanmetricsprocessor // import "github.com/open-telemetry/opentelemetry-
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -61,7 +62,16 @@ var (
 	uniqueTimeSeriesCount = stats.Int64("spanmetrics_unique_time_series", "number of unique time series.", stats.UnitDimensionless)
 	spanIngestedCount     = stats.Int64("spanmetrics_spans_ingested_total", "number of spans ingested", stats.UnitDimensionless)
 	spanProcessedCount    = stats.Int64("spanmetrics_spans_processed_total", "number of spans processed", stats.UnitDimensionless)
+	metricKeyErrorCount   = stats.Int64("metric_key_error_count", "value not found in metricKeyToDimensions cache by key count", stats.UnitDimensionless)
 )
+
+type MetricKeyError struct {
+	key metricKey
+}
+
+func (r *MetricKeyError) Error() string {
+	return fmt.Sprintf("value not found in metricKeyToDimensions cache by key %q", r.key)
+}
 
 func metricViews() []*view.View {
 	return []*view.View{
@@ -80,6 +90,10 @@ func metricViews() []*view.View {
 		{
 			Measure:     spanProcessedCount,
 			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     metricKeyErrorCount,
+			Aggregation: view.Count(),
 		},
 	}
 }
@@ -284,6 +298,9 @@ func (p *processorImp) ConsumeTraces(ctx context.Context, traces pdata.Traces) e
 
 	m, err := p.buildMetrics()
 	if err != nil {
+		if errors.As(err, &MetricKeyError{}) {
+			stats.Record(ctx, metricKeyErrorCount.M(int64(1)))
+		}
 		return err
 	}
 
@@ -399,7 +416,7 @@ func (p *processorImp) getDimensionsByMetricKey(k metricKey) (*pdata.AttributeMa
 		return nil, fmt.Errorf("type assertion of metricKeyToDimensions attributes failed, the key is %q", k)
 	}
 
-	return nil, fmt.Errorf("value not found in metricKeyToDimensions cache by key %q", k)
+	return nil, &MetricKeyError{k}
 }
 
 // aggregateMetrics aggregates the raw metrics from the input trace data.
