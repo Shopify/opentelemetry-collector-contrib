@@ -398,7 +398,6 @@ func (p *processorImp) collectCallMetrics(ilm pdata.InstrumentationLibraryMetric
 		dimensions, err := p.getDimensionsByMetricKey(key)
 		if err != nil {
 			p.logger.Error(err.Error())
-
 			return err
 		}
 
