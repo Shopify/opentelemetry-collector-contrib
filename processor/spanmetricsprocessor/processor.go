@@ -298,7 +298,7 @@ func (p *processorImp) ConsumeTraces(ctx context.Context, traces pdata.Traces) e
 
 	m, err := p.buildMetrics()
 	if err != nil {
-		if errors.As(err, &MetricKeyError{}) {
+		if errors.Is(err, &MetricKeyError{}) {
 			stats.Record(ctx, metricKeyErrorCount.M(int64(1)))
 		}
 		return err
@@ -441,10 +441,10 @@ func (p *processorImp) aggregateMetrics(ctx context.Context, traces pdata.Traces
 
 func (p *processorImp) aggregateMetricsForServiceSpans(ctx context.Context, rspans pdata.ResourceSpans, serviceName string) {
 	ilsSlice := rspans.InstrumentationLibrarySpans()
+	spanCounter := 0
 	for j := 0; j < ilsSlice.Len(); j++ {
 		ils := ilsSlice.At(j)
 		spans := ils.Spans()
-		spanCounter := 0
 		for k := 0; k < spans.Len(); k++ {
 			span := spans.At(k)
 			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.InstrumentationLibrary()) {
@@ -453,8 +453,8 @@ func (p *processorImp) aggregateMetricsForServiceSpans(ctx context.Context, rspa
 			p.aggregateMetricsForSpan(serviceName, span, rspans.Resource().Attributes())
 			spanCounter++
 		}
-		stats.Record(ctx, spanProcessedCount.M(int64(spanCounter)))
 	}
+	stats.Record(ctx, spanProcessedCount.M(int64(spanCounter)))
 }
 
 func (p *processorImp) aggregateMetricsForSpan(serviceName string, span pdata.Span, resourceAttr pdata.AttributeMap) {
