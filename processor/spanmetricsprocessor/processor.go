@@ -62,7 +62,7 @@ var (
 	uniqueTimeSeriesCount = stats.Int64("spanmetrics_unique_time_series", "number of unique time series.", stats.UnitDimensionless)
 	spanIngestedCount     = stats.Int64("spanmetrics_spans_ingested_total", "number of spans ingested", stats.UnitDimensionless)
 	spanProcessedCount    = stats.Int64("spanmetrics_spans_processed_total", "number of spans processed", stats.UnitDimensionless)
-	metricKeyErrorCount   = stats.Int64("metric_key_error_count", "value not found in metricKeyToDimensions cache by key count", stats.UnitDimensionless)
+	metricKeyErrorCount   = stats.Int64("spanmetrics_missing_cached_dimension_total", "value not found in metricKeyToDimensions cache by key count", stats.UnitDimensionless)
 )
 
 type MetricKeyError struct {
