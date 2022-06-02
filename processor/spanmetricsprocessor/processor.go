@@ -436,7 +436,10 @@ func (p *processorImp) aggregateMetrics(ctx context.Context, traces pdata.Traces
 	}
 
 	stats.Record(ctx, dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
-	stats.Record(ctx, uniqueTimeSeriesCount.M(int64(len(p.callSum))))
+
+	uniqueMetricsCount := len(p.callSum) + len(p.latencySum) + (len(p.latencyBucketCounts) * len(p.latencyBounds))
+
+	stats.Record(ctx, uniqueTimeSeriesCount.M(int64(uniqueMetricsCount)))
 }
 
 func (p *processorImp) aggregateMetricsForServiceSpans(ctx context.Context, rspans pdata.ResourceSpans, serviceName string) {
