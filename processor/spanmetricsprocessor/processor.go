@@ -17,12 +17,15 @@ package spanmetricsprocessor // import "github.com/open-telemetry/opentelemetry-
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
 
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer"
@@ -52,7 +55,41 @@ var (
 	defaultLatencyHistogramBucketsMs = []float64{
 		2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000,
 	}
+
+	dimensionsCacheSize   = stats.Int64("spanmetrics_dimensions_cache_entries", "size of metricKeyToDimensions LRU cache", stats.UnitDimensionless)
+	uniqueTimeSeriesCount = stats.Int64("spanmetrics_unique_time_series", "number of unique time series.", stats.UnitDimensionless)
+	spanIngestedCount     = stats.Int64("spanmetrics_spans_ingested_total", "number of spans ingested", stats.UnitDimensionless)
+	spanProcessedCount    = stats.Int64("spanmetrics_spans_processed_total", "number of spans processed", stats.UnitDimensionless)
 )
+
+type MetricKeyError struct {
+	key metricKey
+}
+
+func (r *MetricKeyError) Error() string {
+	return fmt.Sprintf("value not found in metricKeyToDimensions cache by key %q", r.key)
+}
+
+func metricViews() []*view.View {
+	return []*view.View{
+		{
+			Measure:     dimensionsCacheSize,
+			Aggregation: view.LastValue(),
+		},
+		{
+			Measure:     uniqueTimeSeriesCount,
+			Aggregation: view.LastValue(),
+		},
+		{
+			Measure:     spanIngestedCount,
+			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     spanProcessedCount,
+			Aggregation: view.Sum(),
+		},
+	}
+}
 
 type exemplarData struct {
 	traceID pcommon.TraceID
@@ -187,6 +224,12 @@ func validateDimensions(dimensions []Dimension, skipSanitizeLabel bool) error {
 	return nil
 }
 
+func init() {
+	if err := view.Register(metricViews()...); err != nil {
+		log.Fatalf(err.Error())
+	}
+}
+
 // Start implements the component.Component interface.
 func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 	p.logger.Info("Starting spanmetricsprocessor")
@@ -217,6 +260,7 @@ func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 		return fmt.Errorf("failed to find metrics exporter: '%s'; please configure metrics_exporter from one of: %+v",
 			p.config.MetricsExporter, availableMetricsExporters)
 	}
+
 	p.logger.Info("Started spanmetricsprocessor")
 	return nil
 }
@@ -355,14 +399,14 @@ func (p *processorImp) getDimensionsByMetricKey(k metricKey) (*pcommon.Map, erro
 		return nil, fmt.Errorf("type assertion of metricKeyToDimensions attributes failed, the key is %q", k)
 	}
 
-	return nil, fmt.Errorf("value not found in metricKeyToDimensions cache by key %q", k)
+	return nil, &MetricKeyError{k}
 }
 
 // aggregateMetrics aggregates the raw metrics from the input trace data.
 // Each metric is identified by a key that is built from the service name
 // and span metadata such as operation, kind, status_code and any additional
 // dimensions the user has configured.
-func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
+func (p *processorImp) aggregateMetrics(ctx context.Context, traces ptrace.Traces) {
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
 		rspans := traces.ResourceSpans().At(i)
 		r := rspans.Resource()
@@ -371,24 +415,33 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 		if !ok {
 			continue
 		}
+
 		serviceName := attr.Str()
 		p.aggregateMetricsForServiceSpans(rspans, serviceName)
+
 	}
+
+	uniqueMetricsCount := len(p.callSum) + len(p.latencySum) + (len(p.latencyBucketCounts) * len(p.latencyBounds))
+
+	stats.Record(ctx, uniqueTimeSeriesCount.M(int64(uniqueMetricsCount)), dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
 }
 
-func (p *processorImp) aggregateMetricsForServiceSpans(rspans ptrace.ResourceSpans, serviceName string) {
+func (p *processorImp) aggregateMetricsForServiceSpans(ctx context.Context, rspans ptrace.ResourceSpans, serviceName string) {
 	ilsSlice := rspans.ScopeSpans()
+	spanCounter := 0
 	for j := 0; j < ilsSlice.Len(); j++ {
 		ils := ilsSlice.At(j)
 		spans := ils.Spans()
 		for k := 0; k < spans.Len(); k++ {
 			span := spans.At(k)
-			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.InstrumentationLibrary()) {
+			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.Scope()) {
 				continue
 			}
 			p.aggregateMetricsForSpan(serviceName, span, rspans.Resource().Attributes())
+			spanCounter++
 		}
 	}
+	stats.Record(ctx, spanProcessedCount.M(int64(spanCounter)))
 }
 
 func (p *processorImp) aggregateMetricsForSpan(serviceName string, span ptrace.Span, resourceAttr pcommon.Map) {
