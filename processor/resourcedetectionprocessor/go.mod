@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/consul/api v1.12.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.47.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/opencensus v0.47.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	go.opentelemetry.io/collector v0.47.0
 	go.opentelemetry.io/collector/model v0.47.0
 	go.uber.org/multierr v1.8.0
