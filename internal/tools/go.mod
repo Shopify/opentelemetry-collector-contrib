@@ -15,7 +15,7 @@ require (
 	go.opentelemetry.io/build-tools/issuegenerator v0.0.0-20210920164323-2ceabab23375
 	go.opentelemetry.io/build-tools/multimod v0.0.0-20220110194441-2a9d5288bd70
 	go.uber.org/atomic v1.8.0 // indirect
-	golang.org/x/tools v0.1.9
+	golang.org/x/tools v0.1.11
 )
 
 require (
@@ -177,13 +177,12 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
-	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
