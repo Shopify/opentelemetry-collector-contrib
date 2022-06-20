@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/collector v0.47.0
 	go.opentelemetry.io/collector/model v0.47.0
-	google.golang.org/grpc v1.45.0
+	google.golang.org/grpc v1.47.0
 )
 
 require (
