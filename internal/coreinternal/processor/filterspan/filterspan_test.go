@@ -149,7 +149,7 @@ func TestSpan_Matching_False(t *testing.T) {
 			properties: &filterconfig.MatchProperties{
 				Config:     *createConfig(filterset.Regexp),
 				Attributes: []filterconfig.Attribute{},
-				SpanKinds:  []string{pdata.SpanKindProducer.String()},
+				SpanKinds:  []string{ptrace.SpanKindProducer.String()},
 			},
 		},
 		{
@@ -157,7 +157,7 @@ func TestSpan_Matching_False(t *testing.T) {
 			properties: &filterconfig.MatchProperties{
 				Config:     *createConfig(filterset.Strict),
 				Attributes: []filterconfig.Attribute{},
-				SpanKinds:  []string{pdata.SpanKindProducer.String()},
+				SpanKinds:  []string{ptrace.SpanKindProducer.String()},
 			},
 		},
 	}
@@ -239,7 +239,7 @@ func TestSpan_Matching_True(t *testing.T) {
 			properties: &filterconfig.MatchProperties{
 				Config: *createConfig(filterset.Strict),
 				SpanKinds: []string{
-					pdata.SpanKindClient.String(),
+					ptrace.SpanKindClient.String(),
 				},
 				Attributes: []filterconfig.Attribute{},
 			},
@@ -263,7 +263,7 @@ func TestSpan_Matching_True(t *testing.T) {
 	span.Attributes().InsertDouble("keyDouble", 3245.6)
 	span.Attributes().InsertBool("keyBool", true)
 	span.Attributes().InsertString("keyExists", "present")
-	span.SetKind(pdata.SpanKindClient)
+	span.SetKind(ptrace.SpanKindClient)
 	assert.NotNil(t, span)
 
 	resource := pcommon.NewResource()
