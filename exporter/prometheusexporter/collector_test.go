@@ -98,8 +98,8 @@ func TestConvertInvalidMetric(t *testing.T) {
 
 func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	// initialize empty histogram
-	metric := pdata.NewMetric()
-	metric.SetDataType(pdata.MetricDataTypeHistogram)
+	metric := pmetric.NewMetric()
+	metric.SetDataType(pmetric.MetricDataTypeHistogram)
 	metric.SetName("test_metric")
 	metric.SetDescription("this is test metric")
 	metric.SetUnit("T")
@@ -108,9 +108,9 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	hd := metric.Histogram().DataPoints().AppendEmpty()
 
 	bounds := []float64{5, 25, 90}
-	hd.SetExplicitBounds(bounds)
+	hd.SetMExplicitBounds(bounds)
 	bc := []uint64{2, 35, 70}
-	hd.SetBucketCounts(bc)
+	hd.SetMBucketCounts(bc)
 
 	exemplarTs, _ := time.Parse("unix", "Mon Jan _2 15:04:05 MST 2006")
 	exemplars := []prometheus.Exemplar{
@@ -138,19 +138,20 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 		for k, v := range e.Labels {
 			pde.FilteredAttributes().InsertString(k, v)
 		}
-		pde.SetTimestamp(pdata.NewTimestampFromTime(e.Timestamp))
+		pde.SetTimestamp(pcommon.NewTimestampFromTime(e.Timestamp))
 	}
 
 	c := collector{
 		accumulator: &mockAccumulator{
-			[]pdata.Metric{metric},
+			[]pmetric.Metric{metric},
+			pcommon.NewMap(),
 		},
 		logger: zap.NewNop(),
 	}
 
-	pbMetric, _ := c.convertDoubleHistogram(metric)
+	pbMetric, _ := c.convertDoubleHistogram(metric, pcommon.NewMap())
 	m := io_prometheus_client.Metric{}
-	pbMetric.Write(&m)
+	require.NoError(t, pbMetric.Write(&m))
 
 	buckets := m.GetHistogram().GetBucket()
 
