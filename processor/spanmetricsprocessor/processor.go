@@ -17,7 +17,9 @@ package spanmetricsprocessor // import "github.com/open-telemetry/opentelemetry-
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strings"
@@ -25,6 +27,8 @@ import (
 	"time"
 	"unicode"
 
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/consumer"
@@ -34,6 +38,7 @@ import (
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterspan"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor/internal/cache"
 )
 
@@ -55,7 +60,46 @@ var (
 	defaultLatencyHistogramBucketsMs = []float64{
 		2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000, maxDurationMs,
 	}
+
+	dimensionsCacheSize   = stats.Int64("spanmetrics_dimensions_cache_entries", "size of metricKeyToDimensions LRU cache", stats.UnitDimensionless)
+	uniqueTimeSeriesCount = stats.Int64("spanmetrics_unique_time_series", "number of unique time series.", stats.UnitDimensionless)
+	spanIngestedCount     = stats.Int64("spanmetrics_spans_ingested_total", "number of spans ingested", stats.UnitDimensionless)
+	spanProcessedCount    = stats.Int64("spanmetrics_spans_processed_total", "number of spans processed", stats.UnitDimensionless)
+	metricKeyErrorCount   = stats.Int64("spanmetrics_missing_cached_dimension_total", "value not found in metricKeyToDimensions cache by key count", stats.UnitDimensionless)
 )
+
+type MetricKeyError struct {
+	key metricKey
+}
+
+func (r *MetricKeyError) Error() string {
+	return fmt.Sprintf("value not found in metricKeyToDimensions cache by key %q", r.key)
+}
+
+func metricViews() []*view.View {
+	return []*view.View{
+		{
+			Measure:     dimensionsCacheSize,
+			Aggregation: view.LastValue(),
+		},
+		{
+			Measure:     uniqueTimeSeriesCount,
+			Aggregation: view.LastValue(),
+		},
+		{
+			Measure:     spanIngestedCount,
+			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     spanProcessedCount,
+			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     metricKeyErrorCount,
+			Aggregation: view.Count(),
+		},
+	}
+}
 
 type exemplarData struct {
 	traceID pcommon.TraceID
@@ -91,11 +135,23 @@ type processorImp struct {
 	// An LRU cache of dimension key-value maps keyed by a unique identifier formed by a concatenation of its values:
 	// e.g. { "foo/barOK": { "serviceName": "foo", "operation": "/bar", "status_code": "OK" }}
 	metricKeyToDimensions *cache.Cache
+
+	include filterspan.Matcher
+	exclude filterspan.Matcher
 }
 
 func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer consumer.Traces) (*processorImp, error) {
 	logger.Info("Building spanmetricsprocessor")
 	pConfig := config.(*Config)
+
+	include, err := filterspan.NewMatcher(pConfig.Include)
+	if err != nil {
+		return nil, err
+	}
+	exclude, err := filterspan.NewMatcher(pConfig.Exclude)
+	if err != nil {
+		return nil, err
+	}
 
 	bounds := defaultLatencyHistogramBucketsMs
 	if pConfig.LatencyHistogramBuckets != nil {
@@ -107,7 +163,7 @@ func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer cons
 		}
 	}
 
-	if err := validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
+	if err = validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
 		return nil, err
 	}
 
@@ -135,6 +191,8 @@ func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer cons
 		nextConsumer:          nextConsumer,
 		dimensions:            pConfig.Dimensions,
 		metricKeyToDimensions: metricKeyToDimensionsCache,
+		include:               include,
+		exclude:               exclude,
 	}, nil
 }
 
@@ -181,6 +239,12 @@ func validateDimensions(dimensions []Dimension, skipSanitizeLabel bool) error {
 	return nil
 }
 
+func init() {
+	if err := view.Register(metricViews()...); err != nil {
+		log.Fatalf(err.Error())
+	}
+}
+
 // Start implements the component.Component interface.
 func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 	p.logger.Info("Starting spanmetricsprocessor")
@@ -211,6 +275,7 @@ func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 		return fmt.Errorf("failed to find metrics exporter: '%s'; please configure metrics_exporter from one of: %+v",
 			p.config.MetricsExporter, availableMetricsExporters)
 	}
+
 	p.logger.Info("Started spanmetricsprocessor")
 	return nil
 }
@@ -230,10 +295,14 @@ func (p *processorImp) Capabilities() consumer.Capabilities {
 // It aggregates the trace data to generate metrics, forwarding these metrics to the discovered metrics exporter.
 // The original input trace data will be forwarded to the next consumer, unmodified.
 func (p *processorImp) ConsumeTraces(ctx context.Context, traces ptrace.Traces) error {
-	p.aggregateMetrics(traces)
+	stats.Record(ctx, spanIngestedCount.M(int64(traces.SpanCount())))
+	p.aggregateMetrics(ctx, traces)
 
 	m, err := p.buildMetrics()
 	if err != nil {
+		if errors.Is(err, &MetricKeyError{}) {
+			stats.Record(ctx, metricKeyErrorCount.M(int64(1)))
+		}
 		return err
 	}
 
@@ -348,14 +417,14 @@ func (p *processorImp) getDimensionsByMetricKey(k metricKey) (*pcommon.Map, erro
 		return nil, fmt.Errorf("type assertion of metricKeyToDimensions attributes failed, the key is %q", k)
 	}
 
-	return nil, fmt.Errorf("value not found in metricKeyToDimensions cache by key %q", k)
+	return nil, &MetricKeyError{k}
 }
 
 // aggregateMetrics aggregates the raw metrics from the input trace data.
 // Each metric is identified by a key that is built from the service name
 // and span metadata such as operation, kind, status_code and any additional
 // dimensions the user has configured.
-func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
+func (p *processorImp) aggregateMetrics(ctx context.Context, traces ptrace.Traces) {
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
 		rspans := traces.ResourceSpans().At(i)
 		r := rspans.Resource()
@@ -365,20 +434,30 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 			continue
 		}
 		serviceName := attr.StringVal()
-		p.aggregateMetricsForServiceSpans(rspans, serviceName)
+		p.aggregateMetricsForServiceSpans(ctx, rspans, serviceName)
 	}
+
+	uniqueMetricsCount := len(p.callSum) + len(p.latencySum) + (len(p.latencyBucketCounts) * len(p.latencyBounds))
+
+	stats.Record(ctx, uniqueTimeSeriesCount.M(int64(uniqueMetricsCount)), dimensionsCacheSize.M(int64(p.metricKeyToDimensions.Len())))
 }
 
-func (p *processorImp) aggregateMetricsForServiceSpans(rspans ptrace.ResourceSpans, serviceName string) {
+func (p *processorImp) aggregateMetricsForServiceSpans(ctx context.Context, rspans ptrace.ResourceSpans, serviceName string) {
 	ilsSlice := rspans.ScopeSpans()
+	spanCounter := 0
 	for j := 0; j < ilsSlice.Len(); j++ {
 		ils := ilsSlice.At(j)
 		spans := ils.Spans()
 		for k := 0; k < spans.Len(); k++ {
 			span := spans.At(k)
+			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.Scope()) {
+				continue
+			}
 			p.aggregateMetricsForSpan(serviceName, span, rspans.Resource().Attributes())
+			spanCounter++
 		}
 	}
+	stats.Record(ctx, spanProcessedCount.M(int64(spanCounter)))
 }
 
 func (p *processorImp) aggregateMetricsForSpan(serviceName string, span ptrace.Span, resourceAttr pcommon.Map) {
