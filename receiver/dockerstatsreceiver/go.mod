@@ -6,7 +6,7 @@ require (
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/containertest v0.53.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/docker v0.53.0
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.7.5
 	go.opentelemetry.io/collector v0.53.0
 	go.opentelemetry.io/collector/pdata v0.53.0
 	go.opentelemetry.io/collector/semconv v0.53.0
