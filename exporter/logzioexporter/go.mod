@@ -7,12 +7,12 @@ require (
 	github.com/jaegertracing/jaeger v1.36.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.56.0
 	github.com/stretchr/testify v1.8.0
-	go.opentelemetry.io/collector v0.56.0
+	go.opentelemetry.io/collector v0.57.2
 	go.opentelemetry.io/collector/pdata v0.56.0
 	go.opentelemetry.io/collector/semconv v0.56.0
 	go.uber.org/zap v1.21.0
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/protobuf v1.28.1
 )
 
 require (
@@ -27,7 +27,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.8 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/knadh/koanf v1.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
