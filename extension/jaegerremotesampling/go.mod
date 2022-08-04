@@ -3,7 +3,7 @@ module github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaege
 go 1.17
 
 require (
-	github.com/jaegertracing/jaeger v1.36.0
+	github.com/jaegertracing/jaeger v1.37.0
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/collector v0.56.0
 	go.uber.org/zap v1.21.0
@@ -57,7 +57,7 @@ require (
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
