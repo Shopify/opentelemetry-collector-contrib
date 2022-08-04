@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/stretchr/testify v1.8.0
-	go.opentelemetry.io/collector v0.56.0
+	go.opentelemetry.io/collector v0.57.2
 )
 
 require (
@@ -29,14 +29,14 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/jaegertracing/jaeger v1.36.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.15.8 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/knadh/koanf v1.4.2 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/mostynb/go-grpc-compression v1.1.16 // indirect
+	github.com/mostynb/go-grpc-compression v1.1.17 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.56.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -53,7 +53,7 @@ require (
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
