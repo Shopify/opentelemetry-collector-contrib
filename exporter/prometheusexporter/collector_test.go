@@ -130,6 +130,11 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 			Value:     78,
 			Labels:    prometheus.Labels{"test_label_2": "label_value_2"},
 		},
+		{
+			Timestamp: exemplarTs,
+			Value:     100,
+			Labels:    prometheus.Labels{"test_label_3": "label_value_3"},
+		},
 	}
 
 	// add each exemplar value to the metric
@@ -161,7 +166,7 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 
 	buckets := m.GetHistogram().GetBucket()
 
-	require.Equal(t, 3, len(buckets))
+	require.Equal(t, 4, len(buckets))
 
 	require.Equal(t, 3.0, buckets[0].GetExemplar().GetValue())
 	require.Equal(t, int32(128654848), buckets[0].GetExemplar().GetTimestamp().GetNanos())
@@ -178,6 +183,12 @@ func TestConvertDoubleHistogramExemplar(t *testing.T) {
 	require.Equal(t, 1, len(buckets[2].GetExemplar().GetLabel()))
 	require.Equal(t, "test_label_2", buckets[2].GetExemplar().GetLabel()[0].GetName())
 	require.Equal(t, "label_value_2", buckets[2].GetExemplar().GetLabel()[0].GetValue())
+
+	require.Equal(t, 100.0, buckets[3].GetExemplar().GetValue())
+	require.Equal(t, int32(128654848), buckets[3].GetExemplar().GetTimestamp().GetNanos())
+	require.Equal(t, 1, len(buckets[3].GetExemplar().GetLabel()))
+	require.Equal(t, "test_label_3", buckets[3].GetExemplar().GetLabel()[0].GetName())
+	require.Equal(t, "label_value_3", buckets[3].GetExemplar().GetLabel()[0].GetValue())
 }
 
 // errorCheckCore keeps track of logged errors
