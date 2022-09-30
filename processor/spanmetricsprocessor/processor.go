@@ -148,7 +148,7 @@ func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer cons
 		bounds = mapDurationsToMillis(pConfig.LatencyHistogramBuckets)
 	}
 
-	if err := validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
+	if err = validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
 		return nil, err
 	}
 
@@ -287,7 +287,7 @@ func (p *processorImp) ConsumeTraces(ctx context.Context, traces ptrace.Traces) 
 func (p *processorImp) tracesToMetrics(ctx context.Context, traces ptrace.Traces) error {
 	p.lock.Lock()
 
-	p.aggregateMetrics(traces)
+	p.aggregateMetrics(ctx, traces)
 	m, err := p.buildMetrics()
 
 	// Exemplars are only relevant to this batch of traces, so must be cleared within the lock,
@@ -417,7 +417,7 @@ func (p *processorImp) aggregateMetrics(ctx context.Context, traces ptrace.Trace
 		}
 
 		serviceName := attr.Str()
-		p.aggregateMetricsForServiceSpans(rspans, serviceName)
+		p.aggregateMetricsForServiceSpans(ctx, rspans, serviceName)
 
 	}
 
