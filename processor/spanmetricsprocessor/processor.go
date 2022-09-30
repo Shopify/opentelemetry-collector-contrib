@@ -33,6 +33,7 @@ import (
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterspan"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor/internal/cache"
 )
 
@@ -65,6 +66,9 @@ type processorImp struct {
 	logger *zap.Logger
 	config Config
 
+	include filterspan.Matcher
+	exclude filterspan.Matcher
+
 	metricsExporter component.MetricsExporter
 	nextConsumer    consumer.Traces
 
@@ -92,6 +96,15 @@ type processorImp struct {
 func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer consumer.Traces) (*processorImp, error) {
 	logger.Info("Building spanmetricsprocessor")
 	pConfig := config.(*Config)
+
+	include, err := filterspan.NewMatcher(pConfig.Include)
+	if err != nil {
+		return nil, err
+	}
+	exclude, err := filterspan.NewMatcher(pConfig.Exclude)
+	if err != nil {
+		return nil, err
+	}
 
 	bounds := defaultLatencyHistogramBucketsMs
 	if pConfig.LatencyHistogramBuckets != nil {
@@ -126,6 +139,8 @@ func newProcessor(logger *zap.Logger, config config.Processor, nextConsumer cons
 		nextConsumer:          nextConsumer,
 		dimensions:            pConfig.Dimensions,
 		metricKeyToDimensions: metricKeyToDimensionsCache,
+		include:               include,
+		exclude:               exclude,
 	}, nil
 }
 
@@ -368,6 +383,9 @@ func (p *processorImp) aggregateMetricsForServiceSpans(rspans ptrace.ResourceSpa
 		spans := ils.Spans()
 		for k := 0; k < spans.Len(); k++ {
 			span := spans.At(k)
+			if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.Scope()) {
+				continue
+			}
 			p.aggregateMetricsForSpan(serviceName, span, rspans.Resource().Attributes())
 		}
 	}
