@@ -10,7 +10,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/collector v0.61.0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.4.0
 )
 
 require (
