@@ -15,7 +15,7 @@ require (
 	go.opentelemetry.io/collector/semconv v0.61.0
 	go.uber.org/multierr v1.8.0
 	go.uber.org/zap v1.23.0
-	google.golang.org/grpc v1.49.0
+	google.golang.org/grpc v1.50.1
 )
 
 require (
