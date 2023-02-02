@@ -34,6 +34,7 @@ import (
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterspan"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/traceutil"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor/internal/cache"
 )
@@ -50,6 +51,14 @@ const (
 
 var defaultLatencyHistogramBucketsMs = []float64{
 	2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000,
+}
+
+type MetricKeyError struct {
+	key metricKey
+}
+
+func (r *MetricKeyError) Error() string {
+	return fmt.Sprintf("value not found in metricKeyToDimensions cache by key %q", r.key)
 }
 
 type exemplarData struct {
@@ -89,6 +98,9 @@ type processorImp struct {
 	started bool
 
 	shutdownOnce sync.Once
+
+	include filterspan.Matcher
+	exclude filterspan.Matcher
 }
 
 type dimension struct {
@@ -122,12 +134,21 @@ func newProcessor(logger *zap.Logger, config component.Config, nextConsumer cons
 	logger.Info("Building spanmetricsprocessor")
 	pConfig := config.(*Config)
 
+	include, err := filterspan.NewMatcher(pConfig.Include)
+	if err != nil {
+		return nil, err
+	}
+	exclude, err := filterspan.NewMatcher(pConfig.Exclude)
+	if err != nil {
+		return nil, err
+	}
+
 	bounds := defaultLatencyHistogramBucketsMs
 	if pConfig.LatencyHistogramBuckets != nil {
 		bounds = mapDurationsToMillis(pConfig.LatencyHistogramBuckets)
 	}
 
-	if err := validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
+	if err = validateDimensions(pConfig.Dimensions, pConfig.skipSanitizeLabel); err != nil {
 		return nil, err
 	}
 
@@ -154,6 +175,8 @@ func newProcessor(logger *zap.Logger, config component.Config, nextConsumer cons
 		metricKeyToDimensions: metricKeyToDimensionsCache,
 		ticker:                ticker,
 		done:                  make(chan struct{}),
+		include:               include,
+		exclude:               exclude,
 	}, nil
 }
 
@@ -389,6 +412,9 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 			spans := ils.Spans()
 			for k := 0; k < spans.Len(); k++ {
 				span := spans.At(k)
+				if filterspan.SkipSpan(p.include, p.exclude, span, rspans.Resource(), ils.Scope()) {
+					continue
+				}
 				// Protect against end timestamps before start timestamps. Assume 0 duration.
 				latencyInMilliseconds := float64(0)
 				startTime := span.StartTimestamp()

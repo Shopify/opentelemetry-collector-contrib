@@ -26,6 +26,8 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processorhelper"
 	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterspan"
 )
 
 // samplingPriority has the semantic result of parsing the "sampling.priority"
@@ -56,16 +58,28 @@ type traceSamplerProcessor struct {
 	scaledSamplingRate uint32
 	hashSeed           uint32
 	logger             *zap.Logger
+	include            filterspan.Matcher
+	exclude            filterspan.Matcher
 }
 
 // newTracesProcessor returns a processor.TracesProcessor that will perform head sampling according to the given
 // configuration.
 func newTracesProcessor(ctx context.Context, set processor.CreateSettings, cfg *Config, nextConsumer consumer.Traces) (processor.Traces, error) {
+	include, err := filterspan.NewMatcher(cfg.Include)
+	if err != nil {
+		return nil, err
+	}
+	exclude, err := filterspan.NewMatcher(cfg.Exclude)
+	if err != nil {
+		return nil, err
+	}
 	tsp := &traceSamplerProcessor{
 		// Adjust sampling percentage on private so recalculations are avoided.
 		scaledSamplingRate: uint32(cfg.SamplingPercentage * percentageScaleFactor),
 		hashSeed:           cfg.HashSeed,
 		logger:             set.Logger,
+		include:            include,
+		exclude:            exclude,
 	}
 
 	return processorhelper.NewTracesProcessor(
@@ -81,6 +95,9 @@ func (tsp *traceSamplerProcessor) processTraces(ctx context.Context, td ptrace.T
 	td.ResourceSpans().RemoveIf(func(rs ptrace.ResourceSpans) bool {
 		rs.ScopeSpans().RemoveIf(func(ils ptrace.ScopeSpans) bool {
 			ils.Spans().RemoveIf(func(s ptrace.Span) bool {
+				if filterspan.SkipSpan(tsp.include, tsp.exclude, s, rs.Resource(), ils.Scope()) {
+					return false
+				}
 				sp := parseSpanSamplingPriority(s)
 				if sp == doNotSampleSpan {
 					// The OpenTelemetry mentions this as a "hint" we take a stronger

@@ -141,23 +141,23 @@ gendependabot:
 	@echo "  - package-ecosystem: \"github-actions\"" >> ${DEPENDABOT_PATH}
 	@echo "    directory: \"/\"" >> ${DEPENDABOT_PATH}
 	@echo "    schedule:" >> ${DEPENDABOT_PATH}
-	@echo "      interval: \"weekly\"" >> ${DEPENDABOT_PATH}
+	@echo "      interval: \"monthly\"" >> ${DEPENDABOT_PATH}
 	@echo "Add entry for \"/\" docker"
 	@echo "  - package-ecosystem: \"docker\"" >> ${DEPENDABOT_PATH}
 	@echo "    directory: \"/\"" >> ${DEPENDABOT_PATH}
 	@echo "    schedule:" >> ${DEPENDABOT_PATH}
-	@echo "      interval: \"weekly\"" >> ${DEPENDABOT_PATH}
+	@echo "      interval: \"monthly\"" >> ${DEPENDABOT_PATH}
 	@echo "Add entry for \"/\" gomod"
 	@echo "  - package-ecosystem: \"gomod\"" >> ${DEPENDABOT_PATH}
 	@echo "    directory: \"/\"" >> ${DEPENDABOT_PATH}
 	@echo "    schedule:" >> ${DEPENDABOT_PATH}
-	@echo "      interval: \"weekly\"" >> ${DEPENDABOT_PATH}
+	@echo "      interval: \"monthly\"" >> ${DEPENDABOT_PATH}
 	@set -e; for dir in $(NONROOT_MODS); do \
 		echo "Add entry for \"$${dir:1}\""; \
 		echo "  - package-ecosystem: \"gomod\"" >> ${DEPENDABOT_PATH}; \
 		echo "    directory: \"$${dir:1}\"" >> ${DEPENDABOT_PATH}; \
 		echo "    schedule:" >> ${DEPENDABOT_PATH}; \
-		echo "      interval: \"weekly\"" >> ${DEPENDABOT_PATH}; \
+		echo "      interval: \"monthly\"" >> ${DEPENDABOT_PATH}; \
 	done
 
 # Define a delegation target for each module

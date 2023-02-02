@@ -18,6 +18,8 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/collector/component"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/processor/filterconfig"
 )
 
 type AttributeSource string
@@ -36,9 +38,10 @@ var validAttributeSource = map[AttributeSource]bool{
 
 // Config has the configuration guiding the sampler processor.
 type Config struct {
+	filterconfig.MatchConfig `mapstructure:",squash"`
 
-	// SamplingPercentage is the percentage rate at which traces or logs are going to be sampled. Defaults to zero, i.e.: no sample.
-	// Values greater or equal 100 are treated as "sample all traces/logs".
+	// SamplingPercentage is the percentage rate at which traces are going to be sampled. Defaults to zero, i.e.: no sample.
+	// Values greater or equal 100 are treated as "sample all traces".
 	SamplingPercentage float32 `mapstructure:"sampling_percentage"`
 
 	// HashSeed allows one to configure the hashing seed. This is important in scenarios where multiple layers of collectors
