@@ -235,7 +235,7 @@ func TestProcessorConsumeTracesErrors(t *testing.T) {
 
 	p := newProcessorImp(mexp, tcon, nil, cumulative, logger, nil)
 
-	traces := buildSampleTrace()
+	traces := buildSampleTrace(0)
 
 	// Test
 	ctx := metadata.NewIncomingContext(context.Background(), nil)
@@ -276,7 +276,7 @@ func TestProcessorConsumeMetricsErrors(t *testing.T) {
 	defer func() { sdErr := p.Shutdown(ctx); require.NoError(t, sdErr) }()
 	require.NoError(t, err)
 
-	traces := buildSampleTrace()
+	traces := buildSampleTrace(0)
 
 	// Test
 	err = p.ConsumeTraces(ctx, traces)
@@ -312,27 +312,34 @@ func TestProcessorConsumeTraces(t *testing.T) {
 			name:                   "Test single consumption, three spans (Cumulative).",
 			aggregationTemporality: cumulative,
 			verifier:               verifyConsumeMetricsInputCumulative,
-			traces:                 []ptrace.Traces{buildSampleTrace()},
+			traces:                 []ptrace.Traces{buildSampleTrace(0)},
 		},
 		{
 			name:                   "Test single consumption, three spans (Delta).",
 			aggregationTemporality: delta,
 			verifier:               verifyConsumeMetricsInputDelta,
-			traces:                 []ptrace.Traces{buildSampleTrace()},
+			traces:                 []ptrace.Traces{buildSampleTrace(0)},
 		},
 		{
 			// More consumptions, should accumulate additively.
 			name:                   "Test two consumptions (Cumulative).",
 			aggregationTemporality: cumulative,
 			verifier:               verifyMultipleCumulativeConsumptions(),
-			traces:                 []ptrace.Traces{buildSampleTrace(), buildSampleTrace()},
+			traces:                 []ptrace.Traces{buildSampleTrace(0), buildSampleTrace(0)},
+		},
+		{
+			// One consumption with p val of 1 should accumulate additively with an adjusted sample count of 2
+			name:                   "Test single consumption, three spans with p val of 1(Cumulative).",
+			aggregationTemporality: cumulative,
+			verifier:               verifyConsumeMetricsInputPVal,
+			traces:                 []ptrace.Traces{buildSampleTrace(1)},
 		},
 		{
 			// More consumptions, should not accumulate. Therefore, end state should be the same as single consumption case.
 			name:                   "Test two consumptions (Delta).",
 			aggregationTemporality: delta,
 			verifier:               verifyConsumeMetricsInputDelta,
-			traces:                 []ptrace.Traces{buildSampleTrace(), buildSampleTrace()},
+			traces:                 []ptrace.Traces{buildSampleTrace(0), buildSampleTrace(0)},
 		},
 		{
 			// Consumptions with improper timestamps
@@ -399,7 +406,7 @@ func TestMetricKeyCache(t *testing.T) {
 
 	defaultNullValue := pcommon.NewValueStr("defaultNullValue")
 	p := newProcessorImp(mexp, tcon, &defaultNullValue, cumulative, zaptest.NewLogger(t), nil)
-	traces := buildSampleTrace()
+	traces := buildSampleTrace(0)
 
 	// Test
 	ctx := metadata.NewIncomingContext(context.Background(), nil)
@@ -436,7 +443,7 @@ func BenchmarkProcessorConsumeTraces(b *testing.B) {
 	defaultNullValue := pcommon.NewValueStr("defaultNullValue")
 	p := newProcessorImp(mexp, tcon, &defaultNullValue, cumulative, zaptest.NewLogger(b), nil)
 
-	traces := buildSampleTrace()
+	traces := buildSampleTrace(0)
 
 	// Test
 	ctx := metadata.NewIncomingContext(context.Background(), nil)
@@ -486,7 +493,11 @@ func newProcessorImp(mexp *mocks.MetricsExporter, tcon *mocks.TracesConsumer, de
 
 // verifyConsumeMetricsInputCumulative expects one accumulation of metrics, and marked as cumulative
 func verifyConsumeMetricsInputCumulative(t testing.TB, input pmetric.Metrics) bool {
-	return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityCumulative, 1)
+	return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityCumulative, 1, 1)
+}
+
+func verifyConsumeMetricsInputPVal(t testing.TB, input pmetric.Metrics) bool {
+	return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityCumulative, 1, 2)
 }
 
 func verifyBadMetricsOkay(t testing.TB, input pmetric.Metrics) bool {
@@ -495,7 +506,7 @@ func verifyBadMetricsOkay(t testing.TB, input pmetric.Metrics) bool {
 
 // verifyConsumeMetricsInputDelta expects one accumulation of metrics, and marked as delta
 func verifyConsumeMetricsInputDelta(t testing.TB, input pmetric.Metrics) bool {
-	return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityDelta, 1)
+	return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityDelta, 1, 1)
 }
 
 // verifyMultipleCumulativeConsumptions expects the amount of accumulations as kept track of by numCumulativeConsumptions.
@@ -504,13 +515,13 @@ func verifyMultipleCumulativeConsumptions() func(t testing.TB, input pmetric.Met
 	numCumulativeConsumptions := 0
 	return func(t testing.TB, input pmetric.Metrics) bool {
 		numCumulativeConsumptions++
-		return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityCumulative, numCumulativeConsumptions)
+		return verifyConsumeMetricsInput(t, input, pmetric.AggregationTemporalityCumulative, numCumulativeConsumptions, 1)
 	}
 }
 
 // verifyConsumeMetricsInput verifies the input of the ConsumeMetrics call from this processor.
 // This is the best point to verify the computed metrics from spans are as expected.
-func verifyConsumeMetricsInput(t testing.TB, input pmetric.Metrics, expectedTemporality pmetric.AggregationTemporality, numCumulativeConsumptions int) bool {
+func verifyConsumeMetricsInput(t testing.TB, input pmetric.Metrics, expectedTemporality pmetric.AggregationTemporality, numCumulativeConsumptions, adjustedSampleCount int) bool {
 	require.Equal(t, 6, input.DataPointCount(),
 		"Should be 3 for each of call count and latency. Each group of 3 data points is made of: "+
 			"service-a (server kind) -> service-a (client kind) -> service-b (service kind)",
@@ -535,7 +546,7 @@ func verifyConsumeMetricsInput(t testing.TB, input pmetric.Metrics, expectedTemp
 	require.Equal(t, 3, callsDps.Len())
 	for dpi := 0; dpi < 3; dpi++ {
 		dp := callsDps.At(dpi)
-		assert.Equal(t, int64(numCumulativeConsumptions), dp.IntValue(), "There should only be one metric per Service/operation/kind combination")
+		assert.Equal(t, int64(numCumulativeConsumptions*adjustedSampleCount), dp.IntValue(), "There should only be one metric per Service/operation/kind combination")
 		assert.NotZero(t, dp.StartTimestamp(), "StartTimestamp should be set")
 		assert.NotZero(t, dp.Timestamp(), "Timestamp should be set")
 		verifyMetricLabels(dp, t, seenMetricIDs)
@@ -572,7 +583,7 @@ func verifyConsumeMetricsInput(t testing.TB, input pmetric.Metrics, expectedTemp
 		for bi := 0; bi < dp.BucketCounts().Len(); bi++ {
 			wantBucketCount = 0
 			if bi == foundLatencyIndex {
-				wantBucketCount = uint64(numCumulativeConsumptions)
+				wantBucketCount = uint64(numCumulativeConsumptions * adjustedSampleCount)
 			}
 			assert.Equal(t, wantBucketCount, dp.BucketCounts().At(bi))
 		}
@@ -620,7 +631,7 @@ func verifyMetricLabels(dp metricDataPoint, t testing.TB, seenMetricIDs map[metr
 }
 
 func buildBadSampleTrace() ptrace.Traces {
-	badTrace := buildSampleTrace()
+	badTrace := buildSampleTrace(0)
 	span := badTrace.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
 	now := time.Now()
 	// Flipping timestamp for a bad duration
@@ -634,7 +645,7 @@ func buildBadSampleTrace() ptrace.Traces {
 //	service-a/ping (server) ->
 //	  service-a/ping (client) ->
 //	    service-b/ping (server)
-func buildSampleTrace() ptrace.Traces {
+func buildSampleTrace(pval int) ptrace.Traces {
 	traces := ptrace.NewTraces()
 
 	initServiceSpans(
@@ -652,7 +663,7 @@ func buildSampleTrace() ptrace.Traces {
 					statusCode: ptrace.StatusCodeOk,
 				},
 			},
-		}, traces.ResourceSpans().AppendEmpty())
+		}, traces.ResourceSpans().AppendEmpty(), pval)
 	initServiceSpans(
 		serviceSpans{
 			serviceName: "service-b",
@@ -663,12 +674,12 @@ func buildSampleTrace() ptrace.Traces {
 					statusCode: ptrace.StatusCodeError,
 				},
 			},
-		}, traces.ResourceSpans().AppendEmpty())
-	initServiceSpans(serviceSpans{}, traces.ResourceSpans().AppendEmpty())
+		}, traces.ResourceSpans().AppendEmpty(), pval)
+	initServiceSpans(serviceSpans{}, traces.ResourceSpans().AppendEmpty(), pval)
 	return traces
 }
 
-func initServiceSpans(serviceSpans serviceSpans, spans ptrace.ResourceSpans) {
+func initServiceSpans(serviceSpans serviceSpans, spans ptrace.ResourceSpans, pval int) {
 	if serviceSpans.serviceName != "" {
 		spans.Resource().Attributes().PutStr(conventions.AttributeServiceName, serviceSpans.serviceName)
 	}
@@ -677,11 +688,11 @@ func initServiceSpans(serviceSpans serviceSpans, spans ptrace.ResourceSpans) {
 
 	ils := spans.ScopeSpans().AppendEmpty()
 	for _, span := range serviceSpans.spans {
-		initSpan(span, ils.Spans().AppendEmpty())
+		initSpan(span, ils.Spans().AppendEmpty(), pval)
 	}
 }
 
-func initSpan(span span, s ptrace.Span) {
+func initSpan(span span, s ptrace.Span, pval int) {
 	s.SetName(span.operation)
 	s.SetKind(span.kind)
 	s.Status().SetCode(span.statusCode)
@@ -698,6 +709,9 @@ func initSpan(span span, s ptrace.Span) {
 	s.Attributes().PutEmptySlice(arrayAttrName)
 	s.SetTraceID(pcommon.TraceID([16]byte{byte(42)}))
 	s.SetSpanID(pcommon.SpanID([8]byte{byte(42)}))
+	if pval != 0 {
+		s.TraceState().FromRaw(fmt.Sprintf("ot=p:%d;r:9", pval))
+	}
 }
 
 func newOTLPExporters(t *testing.T) (component.ID, exporter.Metrics, exporter.Traces) {
@@ -909,7 +923,7 @@ func TestSanitize(t *testing.T) {
 
 func TestSetExemplars(t *testing.T) {
 	// ----- conditions -------------------------------------------------------
-	traces := buildSampleTrace()
+	traces := buildSampleTrace(0)
 	traceID := traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).TraceID()
 	spanID := traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).SpanID()
 	exemplarSlice := pmetric.NewExemplarSlice()
@@ -936,7 +950,7 @@ func TestProcessorUpdateExemplars(t *testing.T) {
 	// ----- conditions -------------------------------------------------------
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
-	traces := buildSampleTrace()
+	traces := buildSampleTrace(0)
 	traceID := traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).TraceID()
 	spanID := traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).SpanID()
 	key := metricKey("metricKey")
@@ -945,7 +959,7 @@ func TestProcessorUpdateExemplars(t *testing.T) {
 	value := float64(42)
 
 	// ----- call -------------------------------------------------------------
-	p.updateHistogram(key, value, traceID, spanID)
+	p.updateHistogram(key, value, traceID, spanID, uint64(1))
 
 	// ----- verify -----------------------------------------------------------
 	assert.NoError(t, err)
@@ -976,7 +990,7 @@ func TestConsumeTracesEvictedCacheKey(t *testing.T) {
 					statusCode: ptrace.StatusCodeOk,
 				},
 			},
-		}, traces0.ResourceSpans().AppendEmpty())
+		}, traces0.ResourceSpans().AppendEmpty(), 0)
 	initServiceSpans(
 		serviceSpans{
 			serviceName: "service-b",
@@ -987,7 +1001,7 @@ func TestConsumeTracesEvictedCacheKey(t *testing.T) {
 					statusCode: ptrace.StatusCodeError,
 				},
 			},
-		}, traces0.ResourceSpans().AppendEmpty())
+		}, traces0.ResourceSpans().AppendEmpty(), 0)
 	initServiceSpans(
 		serviceSpans{
 			serviceName: "service-c",
@@ -998,7 +1012,7 @@ func TestConsumeTracesEvictedCacheKey(t *testing.T) {
 					statusCode: ptrace.StatusCodeError,
 				},
 			},
-		}, traces0.ResourceSpans().AppendEmpty())
+		}, traces0.ResourceSpans().AppendEmpty(), 0)
 
 	// This trace does not have service-a, and may not result in an attempt to publish metrics for
 	// service-a because service-a may be removed from the metricsKeyCache's evicted list.
@@ -1014,7 +1028,7 @@ func TestConsumeTracesEvictedCacheKey(t *testing.T) {
 					statusCode: ptrace.StatusCodeError,
 				},
 			},
-		}, traces1.ResourceSpans().AppendEmpty())
+		}, traces1.ResourceSpans().AppendEmpty(), 0)
 	initServiceSpans(
 		serviceSpans{
 			serviceName: "service-c",
@@ -1025,7 +1039,7 @@ func TestConsumeTracesEvictedCacheKey(t *testing.T) {
 					statusCode: ptrace.StatusCodeError,
 				},
 			},
-		}, traces1.ResourceSpans().AppendEmpty())
+		}, traces1.ResourceSpans().AppendEmpty(), 0)
 
 	mexp := &mocks.MetricsExporter{}
 	tcon := &mocks.TracesConsumer{}

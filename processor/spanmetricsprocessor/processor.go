@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
+	tracesdk "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/traceutil"
@@ -401,7 +403,27 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 				buildKey(p.keyBuf, serviceName, span, p.dimensions, resourceAttr)
 				key := metricKey(p.keyBuf.String())
 				p.cache(serviceName, span, key, resourceAttr)
-				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID())
+				traceState, err := tracesdk.ParseTraceState(span.TraceState().AsRaw())
+				ot := traceState.Get("ot")
+				asc := uint64(1)
+				if err == nil && ot != "" {
+					args := strings.Split(ot, ";")
+					var pval int
+					for _, arg := range args {
+						if !strings.HasPrefix(arg, "p:") {
+							continue
+						}
+
+						arg = arg[len("p:"):]
+						n, err := strconv.Atoi(strings.TrimSpace(arg))
+						if err != nil {
+							break
+						}
+						pval = n
+					}
+					asc = uint64(1 << pval)
+				}
+				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID(), asc)
 			}
 		}
 	}
@@ -415,7 +437,7 @@ func (p *processorImp) resetAccumulatedMetrics() {
 }
 
 // updateHistogram adds the histogram sample to the histogram defined by the metric key.
-func (p *processorImp) updateHistogram(key metricKey, latency float64, traceID pcommon.TraceID, spanID pcommon.SpanID) {
+func (p *processorImp) updateHistogram(key metricKey, latency float64, traceID pcommon.TraceID, spanID pcommon.SpanID, asc uint64) {
 	histo, ok := p.histograms[key]
 	if !ok {
 		histo = &histogramData{
@@ -425,10 +447,10 @@ func (p *processorImp) updateHistogram(key metricKey, latency float64, traceID p
 	}
 
 	histo.sum += latency
-	histo.count++
+	histo.count += asc
 	// Binary search to find the latencyInMilliseconds bucket index.
 	index := sort.SearchFloat64s(p.latencyBounds, latency)
-	histo.bucketCounts[index]++
+	histo.bucketCounts[index] += asc
 	histo.exemplarsData = append(histo.exemplarsData, exemplarData{traceID: traceID, spanID: spanID, value: latency})
 }
 
