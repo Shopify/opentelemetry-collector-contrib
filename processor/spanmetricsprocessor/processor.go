@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,10 +32,10 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
-	tracesdk "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/traceutil"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/tracestate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor/internal/cache"
 )
 
@@ -403,26 +402,7 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 				buildKey(p.keyBuf, serviceName, span, p.dimensions, resourceAttr)
 				key := metricKey(p.keyBuf.String())
 				p.cache(serviceName, span, key, resourceAttr)
-				traceState, err := tracesdk.ParseTraceState(span.TraceState().AsRaw())
-				ot := traceState.Get("ot")
-				asc := uint64(1)
-				if err == nil && ot != "" {
-					args := strings.Split(ot, ";")
-					var pval int
-					for _, arg := range args {
-						if !strings.HasPrefix(arg, "p:") {
-							continue
-						}
-
-						arg = arg[len("p:"):]
-						n, err := strconv.Atoi(strings.TrimSpace(arg))
-						if err != nil {
-							break
-						}
-						pval = n
-					}
-					asc = uint64(1 << pval)
-				}
+				asc := uint64(1 << tracestate.GetPValue(span.TraceState()))
 				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID(), asc)
 			}
 		}
