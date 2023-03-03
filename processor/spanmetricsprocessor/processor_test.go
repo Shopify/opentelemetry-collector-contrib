@@ -329,10 +329,17 @@ func TestProcessorConsumeTraces(t *testing.T) {
 		},
 		{
 			// One consumption with p val of 1 should accumulate additively with an adjusted sample count of 2
-			name:                   "Test single consumption, three spans with p val of 1(Cumulative).",
+			name:                   "Test single consumption, three spans with p val of 1 (Cumulative).",
 			aggregationTemporality: cumulative,
 			verifier:               verifyConsumeMetricsInputPVal,
 			traces:                 []ptrace.Traces{buildSampleTrace(1)},
+		},
+		{
+			// One consumption with p val of 63 should count as adjusted sample count of 0
+			name:                   "Test single consumption, three spans with p val of 63 (Delta).",
+			aggregationTemporality: cumulative,
+			verifier:               verifyBadMetricsOkay,
+			traces:                 []ptrace.Traces{buildSampleTrace(63)},
 		},
 		{
 			// More consumptions, should not accumulate. Therefore, end state should be the same as single consumption case.

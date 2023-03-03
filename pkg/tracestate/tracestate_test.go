@@ -32,7 +32,8 @@ func TestProcessorStart(t *testing.T) {
 		{"normal pvalue", "ot=p:1", 1},
 		{"normal pvalue, more state", "ot=p:2;r:9;foo:bar", 2},
 		{"invalid pvalue", "ot=p:foo", 0},
-		{"too big pvalue", "ot=p:63", 0},
+		{"too big pvalue", "ot=p:64", 0},
+		{"special case pvalue", "ot=p:63", 63},
 		{"too small pvalue", "ot=p:-1", 0},
 		{"trailing space", "ot=p:9 ;foo:bar", 9},
 	} {

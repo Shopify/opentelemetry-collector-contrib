@@ -52,7 +52,7 @@ func GetPValue(ts pcommon.TraceState) int {
 		if err != nil {
 			return 0
 		}
-		if p < 0 || p > 62 {
+		if p < 0 || p > 63 {
 			return 0
 		}
 		return p

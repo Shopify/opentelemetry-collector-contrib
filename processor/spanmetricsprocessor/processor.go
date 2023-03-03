@@ -402,7 +402,15 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 				buildKey(p.keyBuf, serviceName, span, p.dimensions, resourceAttr)
 				key := metricKey(p.keyBuf.String())
 				p.cache(serviceName, span, key, resourceAttr)
-				asc := uint64(1 << tracestate.GetPValue(span.TraceState()))
+				pval := tracestate.GetPValue(span.TraceState())
+				asc := uint64(1)
+				if pval == 63 {
+					// special case representing adjusted sample count of 0
+					asc = uint64(0)
+				} else {
+					// standard inference of adjusted sample count from pvalue
+					asc = uint64(1 << pval)
+				}
 				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID(), asc)
 			}
 		}
