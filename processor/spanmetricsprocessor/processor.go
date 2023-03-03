@@ -421,7 +421,16 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 						}
 						pval = n
 					}
-					asc = uint64(1 << pval)
+					if pval < 0 || pval > 63 {
+						// Invalid pvalue, just call it 1
+						asc = uint64(1)
+					} else if pval == 63 {
+						// special case representing adjusted sample count of 0
+						asc = uint64(0)
+					} else {
+						// standard inference of adjusted sample count from pvalue
+						asc = uint64(1 << pval)
+					}
 				}
 				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID(), asc)
 			}
