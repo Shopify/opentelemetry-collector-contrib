@@ -60,6 +60,7 @@ var (
 	uniqueTimeSeriesCount = stats.Int64("spanmetrics_unique_time_series", "number of unique time series.", stats.UnitDimensionless)
 	spanIngestedCount     = stats.Int64("spanmetrics_spans_ingested_total", "number of spans ingested", stats.UnitDimensionless)
 	spanProcessedCount    = stats.Int64("spanmetrics_spans_processed_total", "number of spans processed", stats.UnitDimensionless)
+	spanIngestLatency     = stats.Int64("spanmetrics_ingest_latency", "latency of the spanmetrics processor", stats.UnitMilliseconds)
 )
 
 type MetricKeyError struct {
@@ -87,6 +88,10 @@ func metricViews() []*view.View {
 		{
 			Measure:     spanProcessedCount,
 			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     spanIngestLatency,
+			Aggregation: view.Distribution(25, 50, 100, 125, 175, 250, 350, 500, 750, 1000, 1300, 1600, 2000, 2500, 3000, 4000, 6000, 8000, 10000, 13000, 16000, 20000, 30000),
 		},
 	}
 }
@@ -287,6 +292,7 @@ func (p *processorImp) ConsumeTraces(ctx context.Context, traces ptrace.Traces) 
 func (p *processorImp) tracesToMetrics(ctx context.Context, traces ptrace.Traces) error {
 	p.lock.Lock()
 
+	greatestEndTime := greatestEndTime(traces)
 	p.aggregateMetrics(ctx, traces)
 	m, err := p.buildMetrics()
 
@@ -304,6 +310,8 @@ func (p *processorImp) tracesToMetrics(ctx context.Context, traces ptrace.Traces
 	if err = p.metricsExporter.ConsumeMetrics(ctx, m); err != nil {
 		return err
 	}
+
+	stats.Record(ctx, spanIngestLatency.M(time.Since(greatestEndTime).Milliseconds()))
 
 	return nil
 }
@@ -643,4 +651,22 @@ func setLatencyExemplars(exemplarsData []exemplarData, timestamp pcommon.Timesta
 	}
 
 	es.CopyTo(exemplars)
+}
+
+// greatestEndTime returns the latest end time of the span bundle.
+func greatestEndTime(td ptrace.Traces) time.Time {
+	var end time.Time
+	for i := 0; i < td.ResourceSpans().Len(); i++ {
+		rs := td.ResourceSpans().At(i)
+		for j := 0; j < rs.ScopeSpans().Len(); j++ {
+			ss := rs.ScopeSpans().At(j)
+			for k := 0; k < ss.Spans().Len(); k++ {
+				s := ss.Spans().At(k)
+				if end.Before(s.EndTimestamp().AsTime()) {
+					end = s.EndTimestamp().AsTime()
+				}
+			}
+		}
+	}
+	return end
 }
