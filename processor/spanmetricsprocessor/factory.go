@@ -43,10 +43,11 @@ func NewFactory() processor.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		AggregationTemporality: "AGGREGATION_TEMPORALITY_CUMULATIVE",
-		DimensionsCacheSize:    defaultDimensionsCacheSize,
-		skipSanitizeLabel:      featuregate.GlobalRegistry().IsEnabled(dropSanitizationGateID),
-		MetricsFlushInterval:   15 * time.Second,
+		AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+		DimensionsCacheSize:      defaultDimensionsCacheSize,
+		skipSanitizeLabel:        featuregate.GlobalRegistry().IsEnabled(dropSanitizationGateID),
+		MetricsFlushInterval:     15 * time.Second,
+		IngestLatencyServiceName: "my-cool-latency-metric-service",
 	}
 }
 

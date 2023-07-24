@@ -77,7 +77,11 @@ type processorImp struct {
 	startTimestamp pcommon.Timestamp
 
 	// Histogram.
-	histograms    map[metricKey]*histogramData
+	histograms map[metricKey]*histogramData
+
+	// Span metric latency
+	ingestLatencyTimestamp pcommon.Timestamp
+
 	latencyBounds []float64
 
 	keyBuf *bytes.Buffer
@@ -305,6 +309,9 @@ func (p *processorImp) buildMetrics() pmetric.Metrics {
 	ilm := m.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
 	ilm.Scope().SetName("spanmetricsprocessor")
 
+	if p.config.IngestLatencyServiceName != "" {
+		p.collectIngestLatency(ilm)
+	}
 	p.collectCallMetrics(ilm)
 	p.collectLatencyMetrics(ilm)
 
@@ -372,6 +379,17 @@ func (p *processorImp) collectCallMetrics(ilm pmetric.ScopeMetrics) {
 	}
 }
 
+// collectIngestLatency sets up a gauge metric for ingest latency and
+// populates it with the contents of p.ingestLatencyTimestamp.
+func (p *processorImp) collectIngestLatency(ilm pmetric.ScopeMetrics) {
+	mSpanMetricLatency := ilm.Metrics().AppendEmpty()
+	mSpanMetricLatency.SetName("span_metric_ingest_latency")
+	g := mSpanMetricLatency.SetEmptyGauge()
+	dp := g.DataPoints().AppendEmpty()
+	dp.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+	dp.SetIntValue(p.ingestLatencyTimestamp.AsTime().Unix())
+}
+
 // aggregateMetrics aggregates the raw metrics from the input trace data.
 // Each metric is identified by a key that is built from the service name
 // and span metadata such as operation, kind, status_code and any additional
@@ -433,6 +451,11 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 					}
 				}
 				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID(), asc)
+
+				if p.config.IngestLatencyServiceName != "" && p.config.IngestLatencyServiceName == serviceName {
+					p.updateIngestLatency(span.StartTimestamp())
+				}
+
 			}
 		}
 	}
@@ -461,6 +484,10 @@ func (p *processorImp) updateHistogram(key metricKey, latency float64, traceID p
 	index := sort.SearchFloat64s(p.latencyBounds, latency)
 	histo.bucketCounts[index] += asc
 	histo.exemplarsData = append(histo.exemplarsData, exemplarData{traceID: traceID, spanID: spanID, value: latency})
+}
+
+func (p *processorImp) updateIngestLatency(timestamp pcommon.Timestamp) {
+	p.ingestLatencyTimestamp = timestamp
 }
 
 // resetExemplarData resets the entire exemplars map so the next trace will recreate all
