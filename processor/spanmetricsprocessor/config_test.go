@@ -36,27 +36,30 @@ import (
 func TestLoadConfig(t *testing.T) {
 	defaultMethod := "GET"
 	testcases := []struct {
-		configFile                  string
-		wantMetricsExporter         string
-		wantLatencyHistogramBuckets []time.Duration
-		wantDimensions              []Dimension
-		wantDimensionsCacheSize     int
-		wantAggregationTemporality  string
-		wantMetricsFlushInterval    time.Duration
+		configFile                   string
+		wantMetricsExporter          string
+		wantLatencyHistogramBuckets  []time.Duration
+		wantDimensions               []Dimension
+		wantDimensionsCacheSize      int
+		wantAggregationTemporality   string
+		wantMetricsFlushInterval     time.Duration
+		wantIngestLatencyServiceName string
 	}{
 		{
-			configFile:                 "config-2-pipelines.yaml",
-			wantMetricsExporter:        "prometheus",
-			wantAggregationTemporality: cumulative,
-			wantDimensionsCacheSize:    500,
-			wantMetricsFlushInterval:   15 * time.Second, // Default.
+			configFile:                   "config-2-pipelines.yaml",
+			wantMetricsExporter:          "prometheus",
+			wantAggregationTemporality:   cumulative,
+			wantDimensionsCacheSize:      500,
+			wantMetricsFlushInterval:     15 * time.Second, // Default.
+			wantIngestLatencyServiceName: "my-cool-latency-metric-service",
 		},
 		{
-			configFile:                 "config-3-pipelines.yaml",
-			wantMetricsExporter:        "otlp/spanmetrics",
-			wantAggregationTemporality: cumulative,
-			wantDimensionsCacheSize:    defaultDimensionsCacheSize,
-			wantMetricsFlushInterval:   15 * time.Second, // Default.
+			configFile:                   "config-3-pipelines.yaml",
+			wantMetricsExporter:          "otlp/spanmetrics",
+			wantAggregationTemporality:   cumulative,
+			wantDimensionsCacheSize:      defaultDimensionsCacheSize,
+			wantMetricsFlushInterval:     15 * time.Second, // Default.
+			wantIngestLatencyServiceName: "my-cool-latency-metric-service",
 		},
 		{
 			configFile:          "config-full.yaml",
@@ -74,9 +77,10 @@ func TestLoadConfig(t *testing.T) {
 				{"http.method", &defaultMethod},
 				{"http.status_code", nil},
 			},
-			wantDimensionsCacheSize:    1500,
-			wantAggregationTemporality: delta,
-			wantMetricsFlushInterval:   30 * time.Second,
+			wantDimensionsCacheSize:      1500,
+			wantAggregationTemporality:   delta,
+			wantMetricsFlushInterval:     30 * time.Second,
+			wantIngestLatencyServiceName: "ok",
 		},
 	}
 	for _, tc := range testcases {
@@ -103,12 +107,13 @@ func TestLoadConfig(t *testing.T) {
 			require.NotNil(t, cfg)
 			assert.Equal(t,
 				&Config{
-					MetricsExporter:         tc.wantMetricsExporter,
-					LatencyHistogramBuckets: tc.wantLatencyHistogramBuckets,
-					Dimensions:              tc.wantDimensions,
-					DimensionsCacheSize:     tc.wantDimensionsCacheSize,
-					AggregationTemporality:  tc.wantAggregationTemporality,
-					MetricsFlushInterval:    tc.wantMetricsFlushInterval,
+					MetricsExporter:          tc.wantMetricsExporter,
+					LatencyHistogramBuckets:  tc.wantLatencyHistogramBuckets,
+					Dimensions:               tc.wantDimensions,
+					DimensionsCacheSize:      tc.wantDimensionsCacheSize,
+					AggregationTemporality:   tc.wantAggregationTemporality,
+					MetricsFlushInterval:     tc.wantMetricsFlushInterval,
+					IngestLatencyServiceName: tc.wantIngestLatencyServiceName,
 				},
 				cfg.Processors[component.NewID(typeStr)],
 			)
