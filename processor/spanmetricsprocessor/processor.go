@@ -453,7 +453,7 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 				p.updateHistogram(key, latencyInMilliseconds, span.TraceID(), span.SpanID(), asc)
 
 				if p.config.IngestLatencyServiceName != "" && p.config.IngestLatencyServiceName == serviceName {
-					p.updateIngestLatency(span.StartTimestamp())
+					p.updateIngestLatency(span.EndTimestamp())
 				}
 
 			}
