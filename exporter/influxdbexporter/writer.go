@@ -119,9 +119,7 @@ type influxHTTPWriterBatch struct {
 func (b *influxHTTPWriterBatch) WritePoint(_ context.Context, measurement string, tags map[string]string, fields map[string]interface{}, ts time.Time, _ common.InfluxMetricValueType) error {
 	b.encoder.StartLine(measurement)
 	for _, tag := range b.sortTags(tags) {
-		if tag.v != "" {
-			b.encoder.AddTag(fmt.Sprintf("r_%s", tag.k), tag.v)
-		}
+		b.encoder.AddTag(tag.k, tag.v)
 	}
 	for k, v := range b.convertFields(fields) {
 		b.encoder.AddField(k, v)
@@ -193,7 +191,7 @@ func (b *influxHTTPWriterBatch) convertFields(m map[string]interface{}) (fields 
 	for k, v := range m {
 		if k == "" {
 			b.logger.Debug("empty field key")
-		} else if lpv, ok := lineprotocol.StringValue(fmt.Sprintf("%v", v)); !ok {
+		} else if lpv, ok := lineprotocol.NewValue(v); !ok {
 			b.logger.Debug("invalid field value", "key", k, "value", v)
 		} else {
 			fields[k] = lpv
