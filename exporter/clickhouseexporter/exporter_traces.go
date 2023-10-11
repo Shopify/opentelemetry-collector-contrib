@@ -43,12 +43,9 @@ func newTracesExporter(logger *zap.Logger, cfg *Config) (*tracesExporter, error)
 		return nil, err
 	}
 
-	client, err := newClickhouseClient(cfg)
-	if err != nil {
-		return nil, err
-	}
+	client := newClickhouseClient(cfg)
 
-	if err = createTracesTable(cfg, client); err != nil {
+	if err := createTracesTable(cfg, client); err != nil {
 		return nil, err
 	}
 
@@ -308,7 +305,6 @@ func renderCreateTraceIDTsTableSQL(cfg *Config) string {
 }
 
 func renderTraceIDTsMaterializedViewSQL(cfg *Config) string {
-	database, _ := parseDSNDatabase(cfg.DSN)
 	return fmt.Sprintf(createTraceIDTsMaterializedViewSQL, cfg.TracesTableName,
-		database, cfg.TracesTableName, database, cfg.TracesTableName)
+		cfg.Database, cfg.TracesTableName, cfg.Database, cfg.TracesTableName)
 }
