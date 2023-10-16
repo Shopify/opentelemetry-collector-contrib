@@ -200,7 +200,7 @@ ORDER BY (ServiceName, SpanName, toUnixTimestamp(Timestamp), TraceId)
 SETTINGS index_granularity=8192, ttl_only_drop_parts = 1;
 `
 	// language=ClickHouse SQL
-	insertTracesSQLTemplate = `INSERT INTO %s (
+	insertTracesSQLTemplate = `INSERT INTO %s SETTINGS async_insert=1, wait_for_async_insert=1 VALUES (
                         Timestamp,
                         TraceId,
                         SpanId,
