@@ -17,7 +17,6 @@ package spanmetricsprocessor // import "github.com/open-telemetry/opentelemetry-
 import (
 	"time"
 
-	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
@@ -26,14 +25,6 @@ const (
 	cumulative             = "AGGREGATION_TEMPORALITY_CUMULATIVE"
 	dropSanitizationGateID = "processor.spanmetrics.PermissiveLabelSanitization"
 )
-
-func init() {
-	featuregate.GlobalRegistry().MustRegisterID(
-		dropSanitizationGateID,
-		featuregate.StageAlpha,
-		featuregate.WithRegisterDescription("Controls whether to change labels starting with '_' to 'key_'"),
-	)
-}
 
 // Dimension defines the dimension name and optional default value if the Dimension is missing from a span attribute.
 type Dimension struct {
