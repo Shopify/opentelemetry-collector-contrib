@@ -16,10 +16,12 @@ package clickhouseexporter // import "github.com/open-telemetry/opentelemetry-co
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.uber.org/multierr"
 )
 
 // Config defines configuration for Elastic exporter.
@@ -42,10 +44,6 @@ type Config struct {
 	MetricsTableName string `mapstructure:"metrics_table_name"`
 	// TTLDays is The data time-to-live in days, 0 means no ttl.
 	TTLDays uint `mapstructure:"ttl_days"`
-
-	Addr string `mapstructure:"addr"`
-	Database string `mapstructure:"database"`
-	Username string `mapstructure:"username"`
 }
 
 // QueueSettings is a subset of exporterhelper.QueueSettings.
@@ -60,6 +58,13 @@ var (
 
 // Validate validates the clickhouse server configuration.
 func (cfg *Config) Validate() (err error) {
+	if cfg.DSN == "" {
+		err = multierr.Append(err, errConfigNoDSN)
+	}
+	_, e := parseDSNDatabase(cfg.DSN)
+	if e != nil {
+		err = multierr.Append(err, fmt.Errorf("invalid dsn format:%w", err))
+	}
 	return err
 }
 

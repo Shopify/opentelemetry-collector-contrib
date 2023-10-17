@@ -18,11 +18,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
 	_ "github.com/ClickHouse/clickhouse-go/v2" // For register database driver.
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -46,8 +44,12 @@ func newLogsExporter(logger *zap.Logger, cfg *Config) (*logsExporter, error) {
 		return nil, err
 	}
 
-	client := newClickhouseClient(cfg)
-	if err := createLogsTable(cfg, client); err != nil {
+	client, err := newClickhouseClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = createLogsTable(cfg, client); err != nil {
 		return nil, err
 	}
 
@@ -180,44 +182,29 @@ SETTINGS index_granularity=8192, ttl_only_drop_parts = 1;
 var driverName = "clickhouse" // for testing
 
 // newClickhouseClient create a clickhouse client.
-func newClickhouseClient(cfg *Config) (*sql.DB) {
-	return clickhouse.OpenDB(&clickhouse.Options{
-		Addr: []string{cfg.Addr},
-		Auth: clickhouse.Auth{
-			Database: cfg.Database,
-			Username: cfg.Username,
-			Password: os.Getenv("CLICKHOUSE_PASSWORD"),
-		},
-		Settings: clickhouse.Settings{
-			"max_execution_time": 60,
-		},
-		DialTimeout: time.Second * 30,
-		Debug: false,
-		BlockBufferSize: 10,
-	})
+func newClickhouseClient(cfg *Config) (*sql.DB, error) {
+	return sql.Open(driverName, cfg.DSN)
 }
 
 func createDatabase(cfg *Config) error {
-	db := clickhouse.OpenDB(&clickhouse.Options{
-		Addr: []string{cfg.Addr},
-		Auth: clickhouse.Auth{
-			Database: cfg.Database,
-			Username: cfg.Username,
-			Password: os.Getenv("CLICKHOUSE_PASSWORD"),
-		},
-		Settings: clickhouse.Settings{
-			"max_execution_time": 60,
-		},
-		DialTimeout: time.Second * 30,
-		Debug: false,
-		BlockBufferSize: 10,
-	})
-
+	database, _ := parseDSNDatabase(cfg.DSN)
+	if database == defaultDatabase {
+		return nil
+	}
+	// use default database to create new database
+	dsnUseDefaultDatabase, err := getDefaultDSN(cfg.DSN, database)
+	if err != nil {
+		return err
+	}
+	db, err := sql.Open(driverName, dsnUseDefaultDatabase)
+	if err != nil {
+		return fmt.Errorf("sql.Open:%w", err)
+	}
 	defer func() {
 		_ = db.Close()
 	}()
-	query := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", cfg.Database)
-	_, err := db.Exec(query)
+	query := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database)
+	_, err = db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("create database:%w", err)
 	}
