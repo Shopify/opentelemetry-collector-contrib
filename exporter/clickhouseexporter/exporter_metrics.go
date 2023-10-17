@@ -40,10 +40,13 @@ func newMetricsExporter(logger *zap.Logger, cfg *Config) (*metricsExporter, erro
 	if err := createDatabase(cfg); err != nil {
 		return nil, err
 	}
-	client := newClickhouseClient(cfg)
+	client, err := newClickhouseClient(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	internal.SetLogger(logger)
-	if err := internal.NewMetricsTable(cfg.MetricsTableName, cfg.TTLDays, client); err != nil {
+	if err = internal.NewMetricsTable(cfg.MetricsTableName, cfg.TTLDays, client); err != nil {
 		return nil, err
 	}
 
