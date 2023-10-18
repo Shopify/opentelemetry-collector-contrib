@@ -6,6 +6,8 @@ package spanmetricsconnector // import "github.com/open-telemetry/opentelemetry-
 import (
 	"bytes"
 	"context"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector/internal/cache"
@@ -307,6 +310,7 @@ func (p *connectorImp) aggregateMetrics(traces ptrace.Traces) {
 				key := p.buildKey(serviceName, span, p.dimensions, resourceAttr)
 
 				attributes, ok := p.metricKeyToDimensions.Get(key)
+				asc := calcAdjustedSampleCount(span)
 				if !ok {
 					attributes = p.buildAttributes(serviceName, span, resourceAttr)
 					p.metricKeyToDimensions.Add(key, attributes)
@@ -317,10 +321,15 @@ func (p *connectorImp) aggregateMetrics(traces ptrace.Traces) {
 					p.addExemplar(span, duration, h)
 					h.Observe(duration)
 
+					for u := uint64(0); u < asc-1; u++ {
+						h.Observe(duration)
+					}
+
 				}
 				// aggregate sums metrics
 				s := sums.GetOrCreate(key, attributes)
 				s.Add(1)
+				s.Add(asc - 1)
 			}
 		}
 	}
@@ -450,4 +459,42 @@ func buildMetricName(namespace string, name string) string {
 		return namespace + "." + name
 	}
 	return name
+}
+
+func calcAdjustedSampleCount(span ptrace.Span) uint64 {
+	asc := uint64(1)
+	traceState, err := trace.ParseTraceState(span.TraceState().AsRaw())
+	if err != nil {
+		return asc
+	}
+	ot := traceState.Get("ot")
+	if ot == "" {
+		return asc
+	}
+	args := strings.Split(ot, ";")
+	var pval int
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "p:") {
+			continue
+		}
+
+		arg = arg[len("p:"):]
+		n, err := strconv.Atoi(strings.TrimSpace(arg))
+		if err != nil {
+			break
+		}
+		pval = n
+	}
+	switch {
+	case pval < 0 || pval > 63:
+		// Invalid pvalue, just call it 1
+		asc = uint64(1)
+	case pval == 63:
+		// special case representing adjusted sample count of 0
+		asc = uint64(0)
+	default:
+		// standard inference of adjusted sample count from pvalue
+		asc = uint64(1 << pval)
+	}
+	return asc
 }
