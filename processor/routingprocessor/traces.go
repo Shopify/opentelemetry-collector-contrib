@@ -127,7 +127,7 @@ func (p *tracesProcessor) group(key string, groups map[string]spanGroup, exporte
 		group.traces = ptrace.NewTraces()
 		group.exporters = exporters
 	}
-	spans.CopyTo(group.traces.ResourceSpans().AppendEmpty())
+	spans.MoveTo(group.traces.ResourceSpans().AppendEmpty())
 	groups[key] = group
 }
 
