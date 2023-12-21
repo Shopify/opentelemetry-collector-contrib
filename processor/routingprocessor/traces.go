@@ -16,6 +16,7 @@ package routingprocessor // import "github.com/open-telemetry/opentelemetry-coll
 
 import (
 	"context"
+	"sync"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config"
@@ -88,7 +89,6 @@ func (p *tracesProcessor) route(ctx context.Context, t ptrace.Traces) error {
 	// logs split up which would cause higher CPU usage.
 	groups := map[string]spanGroup{}
 
-	var errs error
 	for i := 0; i < t.ResourceSpans().Len(); i++ {
 		rspans := t.ResourceSpans().At(i)
 		stx := ottltraces.NewTransformContext(
@@ -113,12 +113,33 @@ func (p *tracesProcessor) route(ctx context.Context, t ptrace.Traces) error {
 		}
 	}
 
+	var toSend int
 	for _, g := range groups {
-		for _, e := range g.exporters {
-			errs = multierr.Append(errs, e.ConsumeTraces(ctx, g.traces))
+		for range g.exporters {
+			toSend++
 		}
 	}
-	return errs
+
+	errs := make(chan error, toSend)
+	wg := sync.WaitGroup{}
+	wg.Add(toSend)
+	for _, g := range groups {
+		for _, e := range g.exporters {
+			e := e
+			go func() {
+				errs <- e.ConsumeTraces(ctx, g.traces)
+				wg.Done()
+			}()
+		}
+	}
+
+	wg.Wait()
+	close(errs)
+	var oerr error
+	for err := range errs {
+		oerr = multierr.Append(oerr, err)
+	}
+	return oerr
 }
 
 func (p *tracesProcessor) group(key string, groups map[string]spanGroup, exporters []component.TracesExporter, spans ptrace.ResourceSpans) {
