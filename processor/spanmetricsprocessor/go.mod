@@ -3,7 +3,7 @@ module github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanm
 go 1.18
 
 require (
-	github.com/hashicorp/golang-lru v0.5.4
+	github.com/hashicorp/golang-lru v1.0.2
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter v0.61.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.61.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.61.0
