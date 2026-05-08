@@ -1,6 +1,6 @@
 module github.com/open-telemetry/opentelemetry-collector-contrib/testbed
 
-go 1.18
+go 1.25
 
 require (
 	github.com/fluent/fluent-logger-golang v1.9.0
@@ -51,7 +51,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
-	github.com/apache/thrift v0.17.0 // indirect
+	github.com/apache/thrift v0.23.0 // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/aws/aws-sdk-go v1.44.106 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
