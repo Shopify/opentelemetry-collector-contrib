@@ -1,6 +1,6 @@
 module github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter
 
-go 1.18
+go 1.25
 
 require (
 	github.com/Shopify/sarama v1.36.0
@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	github.com/apache/thrift v0.17.0 // indirect
+	github.com/apache/thrift v0.23.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.3.0 // indirect
