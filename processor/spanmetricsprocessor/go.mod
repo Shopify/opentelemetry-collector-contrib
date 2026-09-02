@@ -1,6 +1,6 @@
 module github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanmetricsprocessor
 
-go 1.18
+go 1.25
 
 require (
 	github.com/hashicorp/golang-lru v0.5.4
@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
-	github.com/apache/thrift v0.17.0 // indirect
+	github.com/apache/thrift v0.24.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
